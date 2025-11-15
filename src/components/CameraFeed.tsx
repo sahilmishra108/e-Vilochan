@@ -4,20 +4,49 @@ import { Card } from '@/components/ui/card';
 import { Camera, Square, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { monitorROIs } from '@/types/vitals';
+import { monitorROIs, VitalsData } from '@/types/vitals';
+import VitalCard from './VitalCard';
 
 const CameraFeed = () => {
   const [isCapturing, setIsCapturing] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [latestVitals, setLatestVitals] = useState<VitalsData | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
+    // Subscribe to real-time updates
+    const channel = supabase
+      .channel('vitals-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'vitals'
+        },
+        (payload) => {
+          if (payload.new) {
+            setLatestVitals({
+              HR: payload.new.hr,
+              Pulse: payload.new.pulse,
+              SpO2: payload.new.spo2,
+              ABP: payload.new.abp,
+              PAP: payload.new.pap,
+              EtCO2: payload.new.etco2,
+              awRR: payload.new.awrr
+            });
+          }
+        }
+      )
+      .subscribe();
+
     return () => {
       stopCapture();
+      supabase.removeChannel(channel);
     };
   }, []);
 
@@ -183,6 +212,52 @@ const CameraFeed = () => {
         {isCapturing && (
           <p>• Capturing frames every 3 seconds • Frames are deleted after processing</p>
         )}
+      </div>
+
+      {/* Live KPIs */}
+      <div className="mt-6 space-y-4">
+        <h3 className="text-xl font-bold text-foreground">Live Vitals</h3>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <VitalCard 
+            label="HR" 
+            value={latestVitals?.HR ?? null} 
+            unit="bpm"
+          />
+          <VitalCard 
+            label="Pulse" 
+            value={latestVitals?.Pulse ?? null} 
+            unit="bpm"
+          />
+          <VitalCard 
+            label="SpO2" 
+            value={latestVitals?.SpO2 ?? null} 
+            unit="%"
+          />
+          <VitalCard 
+            label="EtCO2" 
+            value={latestVitals?.EtCO2 ?? null} 
+            unit="mmHg"
+          />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <VitalCard 
+            label="ABP" 
+            value={latestVitals?.ABP ?? null} 
+            unit="mmHg"
+          />
+          <VitalCard 
+            label="PAP" 
+            value={latestVitals?.PAP ?? null} 
+            unit="mmHg"
+          />
+          <VitalCard 
+            label="awRR" 
+            value={latestVitals?.awRR ?? null} 
+            unit="/min"
+          />
+        </div>
       </div>
     </Card>
   );
