@@ -1,9 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Card } from '@/components/ui/card';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Bell, AlertTriangle, TrendingUp, TrendingDown, X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { toast } from 'sonner';
+
 
 interface VitalRecord {
   created_at: string;
@@ -35,7 +33,7 @@ interface VitalAlert {
 const VITAL_RANGES = {
   HR: { min: 60, max: 100, low: 60, high: 100 },
   Pulse: { min: 60, max: 100, low: 60, high: 100 },
-  SpO2: { min: 95, max: 100, low: 90, high: 100 }, // 100% is max, no high alert
+  SpO2: { min: 95, max: 100, low: 90, high: 100 },
   ABP_Sys: { min: 90, max: 120, low: 90, high: 120 },
   PAP_Dia: { min: 4, max: 12, low: 4, high: 12 },
   EtCO2: { min: 35, max: 45, low: 35, high: 45 },
@@ -44,26 +42,30 @@ const VITAL_RANGES = {
 
 interface VitalNotificationsProps {
   vitals: VitalRecord[];
-  compact?: boolean;
   patient?: PatientInfo | null;
 }
 
-const VitalNotifications = ({ vitals, compact = false, patient }: VitalNotificationsProps) => {
+const VitalNotifications = ({ vitals, patient }: VitalNotificationsProps) => {
   const [alerts, setAlerts] = useState<VitalAlert[]>([]);
   const [dismissedAlerts, setDismissedAlerts] = useState<Set<string>>(new Set());
   const alarmAudioRef = React.useRef<HTMLAudioElement | null>(null);
   const previousAlertIdsRef = React.useRef<Set<string>>(new Set());
 
-  // Audio removed - no alarm sound
+
 
   useEffect(() => {
     if (vitals.length === 0) return;
 
-    const latestVital = vitals[vitals.length - 1];
+    // API returns vitals in DESC order (newest first), so vitals[0] is the latest
+    const latestVital = vitals[0];
     const newAlerts: VitalAlert[] = [];
+
+    console.log('[VitalNotifications] Checking vitals:', latestVital);
+    console.log('[VitalNotifications] Total vitals:', vitals.length);
 
     // Check HR (< 60 low, 60-100 normal, > 100 high)
     if (latestVital.hr !== null) {
+      console.log('[VitalNotifications] HR:', latestVital.hr, 'Range:', VITAL_RANGES.HR);
       if (latestVital.hr < VITAL_RANGES.HR.low || latestVital.hr > VITAL_RANGES.HR.high) {
         newAlerts.push({
           id: `hr-${latestVital.created_at}`,
@@ -166,53 +168,24 @@ const VitalNotifications = ({ vitals, compact = false, patient }: VitalNotificat
       }
     }
 
+    console.log('[VitalNotifications] Generated alerts:', newAlerts);
+
     // Update alerts, keeping only the latest for each vital type
     setAlerts((prevAlerts) => {
       const vitalTypes = new Set(newAlerts.map(a => a.vital));
       const filteredPrev = prevAlerts.filter(a => !vitalTypes.has(a.vital));
       const updatedAlerts = [...filteredPrev, ...newAlerts].filter(a => !dismissedAlerts.has(a.id));
 
-      // Play alarm if new alerts appeared
+
       const newAlertIds = new Set(updatedAlerts.map(a => a.id));
+      // Play audio if available when new alerts appear
       const hasNewAlerts = Array.from(newAlertIds).some(id => !previousAlertIdsRef.current.has(id));
-
-      if (hasNewAlerts && updatedAlerts.length > 0) {
-        // Play audio if available
-        if (alarmAudioRef.current) {
-          alarmAudioRef.current.play().catch(() => { });
-        }
-
-        // Trigger Toast Notifications for new alerts
-        updatedAlerts.forEach(alert => {
-          if (newAlertIds.has(alert.id)) {
-            toast(
-              <div className="flex flex-col gap-1.5">
-                {patient && (
-                  <div className="text-xs font-semibold text-muted-foreground border-b pb-1">
-                    Patient: {patient.patient_name} (ID: #{patient.patient_id})
-                  </div>
-                )}
-                <span className="font-bold flex items-center gap-2">
-                  {alert.severity === 'critical' ? 'CRITICAL ALERT' : 'Vital Warning'}
-                  {alert.severity === 'critical' && <AlertTriangle className="w-4 h-4 text-red-600" />}
-                </span>
-                <span>
-                  {alert.vital} is {alert.type === 'high' ? 'High' : 'Low'}: <strong>{alert.value}</strong>
-                </span>
-              </div>,
-              {
-                duration: alert.severity === 'critical' ? 10000 : 5000,
-                position: 'top-right',
-                style: {
-                  borderLeft: alert.severity === 'critical' ? '4px solid red' : '4px solid orange',
-                }
-              }
-            );
-          }
-        });
+      if (hasNewAlerts && updatedAlerts.length > 0 && alarmAudioRef.current) {
+        alarmAudioRef.current.play().catch(() => { });
       }
-
       previousAlertIdsRef.current = newAlertIds;
+
+      console.log('[VitalNotifications] Updated alerts:', updatedAlerts);
       return updatedAlerts;
     });
   }, [vitals, dismissedAlerts]);
@@ -225,87 +198,104 @@ const VitalNotifications = ({ vitals, compact = false, patient }: VitalNotificat
   const activeAlerts = alerts.filter((a) => !dismissedAlerts.has(a.id));
 
   if (activeAlerts.length === 0) {
-    return (
-      <div className={compact ? "p-4" : "p-6"}>
-        <div className="flex items-center gap-3 mb-4">
-          <Bell className="w-5 h-5 text-primary" />
-          <h2 className={compact ? "text-lg font-bold text-foreground" : "text-xl font-bold text-foreground"}>Vital Alerts</h2>
-        </div>
-        <p className="text-sm text-muted-foreground">All vitals are normal</p>
-      </div>
-    );
+    return null;
   }
 
-  const content = (
-    <>
-      <div className="flex items-center justify-between mb-4">
+  const criticalCount = activeAlerts.filter(a => a.severity === 'critical').length;
+  const warningCount = activeAlerts.filter(a => a.severity === 'warning').length;
+
+  return (
+    <Card className="p-4 bg-gradient-to-r from-red-50 to-orange-50 dark:from-red-950/20 dark:to-orange-950/20 border-l-4 border-red-500 shadow-lg">
+      <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-3">
-          <Bell className="w-5 h-5 text-primary" />
-          <h2 className={compact ? "text-lg font-bold text-foreground" : "text-xl font-bold text-foreground"}>Vital Alerts</h2>
-          <span className="px-2 py-1 text-xs font-bold rounded-full bg-destructive text-destructive-foreground">
-            {activeAlerts.length}
-          </span>
+          <div className="p-2 bg-red-500 rounded-lg">
+            <Bell className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
+              Vital Sign Alerts
+              <div className="flex gap-2">
+                {criticalCount > 0 && (
+                  <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-red-500 text-white">
+                    {criticalCount} Critical
+                  </span>
+                )}
+                {warningCount > 0 && (
+                  <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-orange-500 text-white">
+                    {warningCount} Warning
+                  </span>
+                )}
+              </div>
+            </h2>
+            {patient && (
+              <p className="text-sm text-muted-foreground">
+                Patient: {patient.patient_name} (ID: {patient.patient_id})
+              </p>
+            )}
+          </div>
         </div>
       </div>
 
-      <div className="space-y-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
         {activeAlerts.map((alert) => (
-          <Alert
+          <div
             key={alert.id}
-            variant={alert.severity === 'critical' ? 'destructive' : 'default'}
-            className="relative"
+            className={`relative p-3 rounded-lg border-2 transition-all hover:shadow-md ${alert.severity === 'critical'
+              ? 'bg-red-100 dark:bg-red-950/30 border-red-500'
+              : 'bg-orange-100 dark:bg-orange-950/30 border-orange-500'
+              }`}
           >
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex items-start gap-3 flex-1">
+            <button
+              onClick={() => dismissAlert(alert.id)}
+              className="absolute top-2 right-2 p-1 rounded-full hover:bg-black/10 transition-colors"
+              aria-label="Dismiss alert"
+            >
+              <X className="w-3 h-3 text-muted-foreground" />
+            </button>
+
+            <div className="flex items-start gap-2 pr-6">
+              <div className="mt-0.5">
                 {alert.severity === 'critical' ? (
-                  <AlertTriangle className="w-5 h-5 text-destructive" />
+                  <AlertTriangle className="w-5 h-5 text-red-600" />
                 ) : (
-                  <AlertTriangle className="w-5 h-5 text-yellow-500" />
+                  <AlertTriangle className="w-5 h-5 text-orange-600" />
                 )}
-                <div className="flex-1">
-                  <AlertTitle className="flex items-center gap-2">
-                    {alert.vital} - {alert.type === 'high' ? 'High' : 'Low'}
-                    {alert.severity === 'critical' && (
-                      <span className="px-2 py-0.5 text-xs font-bold rounded bg-destructive text-destructive-foreground">
-                        CRITICAL
-                      </span>
-                    )}
-                  </AlertTitle>
-                  <AlertDescription className="mt-1">
-                    <div className="flex items-center gap-2">
-                      {alert.type === 'high' ? (
-                        <TrendingUp className="w-4 h-4 text-destructive" />
-                      ) : (
-                        <TrendingDown className="w-4 h-4 text-destructive" />
-                      )}
-                      <span>
-                        Value: <strong>{alert.value}</strong> at{' '}
-                        {new Date(alert.timestamp).toLocaleTimeString()}
-                      </span>
-                    </div>
-                  </AlertDescription>
-                </div>
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-8 w-8 p-0"
-                onClick={() => dismissAlert(alert.id)}
-              >
-                <X className="w-4 h-4" />
-              </Button>
+
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <h3 className="font-bold text-sm text-foreground truncate">
+                    {alert.vital}
+                  </h3>
+                  <span className={`px-1.5 py-0.5 text-xs font-bold rounded ${alert.type === 'high'
+                    ? 'bg-red-200 text-red-800 dark:bg-red-900 dark:text-red-200'
+                    : 'bg-blue-200 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                    }`}>
+                    {alert.type === 'high' ? '↑ HIGH' : '↓ LOW'}
+                  </span>
+                </div>
+
+                <div className="flex items-baseline gap-1 mb-1">
+                  {alert.type === 'high' ? (
+                    <TrendingUp className="w-4 h-4 text-red-600 flex-shrink-0" />
+                  ) : (
+                    <TrendingDown className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                  )}
+                  <span className="text-lg font-bold text-foreground">
+                    {alert.value}
+                  </span>
+                </div>
+
+                <p className="text-xs text-muted-foreground">
+                  {new Date(alert.timestamp).toLocaleDateString()} • {new Date(alert.timestamp).toLocaleTimeString()}
+                </p>
+              </div>
             </div>
-          </Alert>
+          </div>
         ))}
       </div>
-    </>
+    </Card>
   );
-
-  if (compact) {
-    return <div className="p-4">{content}</div>;
-  }
-
-  return <Card className="p-6 bg-card border-border">{content}</Card>;
 };
 
 export default VitalNotifications;

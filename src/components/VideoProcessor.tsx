@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Upload, FileVideo, Download, Loader2, FileSpreadsheet } from 'lucide-react';
+import { Upload, FileVideo, Download, Loader2, FileSpreadsheet, Activity } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { io } from 'socket.io-client';
 import { batchExtractVitals, OCRProgress } from '@/lib/ocr';
@@ -322,178 +322,201 @@ const VideoProcessor = ({ patientId }: VideoProcessorProps) => {
   };
 
   return (
-    <Card className="p-6 bg-card border-border">
-      <h2 className="text-2xl font-bold text-foreground flex items-center gap-2 mb-4">
-        <FileVideo className="w-6 h-6 text-primary" />
-        Video Analysis
-      </h2>
+    <div className="space-y-8 animate-fade-in">
+      <Card className="p-8 bg-white/60 backdrop-blur-md border-white/20 shadow-lg rounded-2xl">
+        <h2 className="text-2xl font-bold text-foreground flex items-center gap-3 mb-6">
+          <div className="p-2 bg-primary/10 rounded-lg text-primary">
+            <FileVideo className="w-6 h-6" />
+          </div>
+          Video Analysis
+        </h2>
 
-      <div
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-        className={`border-2 border-dashed rounded-lg p-12 text-center transition-colors ${isDragging
-          ? 'border-primary bg-primary/5'
-          : 'border-border hover:border-primary/50'
-          }`}
-      >
-        <input
-          type="file"
-          accept="video/*"
-          onChange={handleFileSelect}
-          className="hidden"
-          id="video-upload"
-        />
+        <div
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          className={`border-3 border-dashed rounded-2xl p-16 text-center transition-all duration-300 group ${isDragging
+            ? 'border-primary bg-primary/5 scale-[1.02]'
+            : 'border-slate-200 hover:border-primary/50 hover:bg-slate-50/50'
+            }`}
+        >
+          <input
+            type="file"
+            accept="video/*"
+            onChange={handleFileSelect}
+            className="hidden"
+            id="video-upload"
+          />
 
-        <label htmlFor="video-upload" className="cursor-pointer">
-          <Upload className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-          <p className="text-lg font-medium text-foreground mb-2">
-            Drop video here or click to upload
-          </p>
-          <p className="text-sm text-muted-foreground">
-            MP4, MOV, or AVI files
-          </p>
-        </label>
-      </div>
+          <label htmlFor="video-upload" className="cursor-pointer flex flex-col items-center">
+            <div className={`w-20 h-20 rounded-full flex items-center justify-center mb-6 transition-colors ${isDragging ? 'bg-primary/20 text-primary' : 'bg-slate-100 text-slate-400 group-hover:bg-primary/10 group-hover:text-primary'}`}>
+              <Upload className="w-10 h-10" />
+            </div>
+            <p className="text-xl font-bold text-slate-700 mb-2">
+              Drop video here or click to upload
+            </p>
+            <p className="text-sm text-slate-500 max-w-xs mx-auto">
+              Support for MP4, MOV, or AVI files. We'll extract vitals automatically.
+            </p>
+          </label>
+        </div>
 
-      {videoFile && (
-        <div className="mt-6 space-y-4">
-          <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
-            <div className="flex items-center gap-3">
-              <FileVideo className="w-5 h-5 text-primary" />
-              <div>
-                <p className="font-medium text-foreground">{videoFile.name}</p>
-                <p className="text-sm text-muted-foreground">
-                  {(videoFile.size / (1024 * 1024)).toFixed(2)} MB
+        {videoFile && (
+          <div className="mt-8 space-y-6 animate-slide-in-right">
+            <div className="flex items-center justify-between p-6 bg-white/50 backdrop-blur-sm border border-white/20 rounded-xl shadow-sm">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600">
+                  <FileVideo className="w-6 h-6" />
+                </div>
+                <div>
+                  <p className="font-bold text-slate-800 text-lg">{videoFile.name}</p>
+                  <p className="text-sm text-slate-500 font-medium">
+                    {(videoFile.size / (1024 * 1024)).toFixed(2)} MB
+                  </p>
+                </div>
+              </div>
+
+              <Button
+                onClick={processVideo}
+                disabled={isProcessing}
+                className={`rounded-full px-6 py-6 shadow-lg transition-all ${isProcessing ? 'bg-slate-100 text-slate-500' : 'bg-primary hover:bg-primary/90 hover:scale-105 hover:shadow-primary/25'}`}
+              >
+                {isProcessing ? (
+                  <>
+                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                    Processing... {progress}%
+                  </>
+                ) : (
+                  <>
+                    <Download className="w-5 h-5 mr-2" />
+                    Extract & Download CSV
+                  </>
+                )}
+              </Button>
+            </div>
+
+            {isProcessing && (
+              <div className="space-y-3 p-6 bg-slate-50 rounded-xl border border-slate-100">
+                <div className="flex justify-between text-sm font-medium mb-1">
+                  <span className="text-slate-700">Processing Video</span>
+                  <span className="text-primary">{progress}%</span>
+                </div>
+                <div className="w-full bg-slate-200 rounded-full h-3 overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-primary to-secondary transition-all duration-300 relative"
+                    style={{ width: `${progress}%` }}
+                  >
+                    <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
+                  </div>
+                </div>
+                {ocrProgress && (
+                  <div className="flex items-center justify-between text-xs text-slate-500 mt-2">
+                    <p className="font-medium flex items-center gap-2">
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      {ocrProgress.message}
+                    </p>
+                    <p className="font-mono bg-slate-200 px-2 py-0.5 rounded text-slate-600">OCR: {ocrProgress.status}</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Real-time Chart */}
+        {(vitalsHistory.length > 0 || isProcessing) && (
+          <div className="mt-8 animate-fade-in">
+            <h3 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
+              <Activity className="w-5 h-5 text-primary" />
+              Extraction Trends
+            </h3>
+            <div className="h-[350px] w-full bg-white/40 backdrop-blur-sm border border-white/20 rounded-2xl p-6 shadow-inner">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={vitalsHistory}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" vertical={false} />
+                  <XAxis dataKey="time" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
+                  <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                      borderRadius: '12px',
+                      border: '1px solid rgba(0,0,0,0.1)',
+                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                      fontSize: '12px'
+                    }}
+                  />
+                  <Legend />
+                  <Line type="monotone" dataKey="HR" stroke="#f43f5e" strokeWidth={3} dot={false} activeDot={{ r: 6 }} />
+                  <Line type="monotone" dataKey="SpO2" stroke="#06b6d4" strokeWidth={3} dot={false} activeDot={{ r: 6 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        )}
+
+        {/* Vitals Table */}
+        {allExtractedVitals.length > 0 && (
+          <div className="mt-8 space-y-4 animate-fade-in">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xl font-bold text-foreground">All Extracted Vitals</h3>
+              <Button
+                onClick={() => {
+                  const csvContent = generateCSV(allExtractedVitals);
+                  downloadCSV(csvContent, `vitals-table-${Date.now()}.csv`);
+                  toast({
+                    title: "Export successful",
+                    description: "Vitals table exported to CSV",
+                  });
+                }}
+                variant="outline"
+                className="gap-2 rounded-full border-slate-200 hover:bg-slate-50 hover:text-primary"
+              >
+                <FileSpreadsheet className="w-4 h-4" />
+                Export Table to CSV
+              </Button>
+            </div>
+
+            <Card className="border-white/20 shadow-lg overflow-hidden rounded-2xl bg-white/40 backdrop-blur-md">
+              <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
+                <Table>
+                  <TableHeader className="sticky top-0 bg-slate-50/90 backdrop-blur-sm z-10 border-b border-slate-200">
+                    <TableRow className="hover:bg-transparent">
+                      <TableHead className="font-bold text-slate-700">Time</TableHead>
+                      <TableHead className="font-bold text-slate-700 text-center">HR (bpm)</TableHead>
+                      <TableHead className="font-bold text-slate-700 text-center">Pulse (bpm)</TableHead>
+                      <TableHead className="font-bold text-slate-700 text-center">SpO2 (%)</TableHead>
+                      <TableHead className="font-bold text-slate-700 text-center">ABP (mmHg)</TableHead>
+                      <TableHead className="font-bold text-slate-700 text-center">PAP (mmHg)</TableHead>
+                      <TableHead className="font-bold text-slate-700 text-center">EtCO2 (mmHg)</TableHead>
+                      <TableHead className="font-bold text-slate-700 text-center">awRR (/min)</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {allExtractedVitals.map((vital, index) => (
+                      <TableRow key={index} className="hover:bg-white/60 border-b border-slate-100/50 transition-colors">
+                        <TableCell className="font-medium text-slate-600 bg-slate-50/30">{vital.timeString}</TableCell>
+                        <TableCell className="text-center font-semibold text-rose-600">{vital.HR ?? '-'}</TableCell>
+                        <TableCell className="text-center font-semibold text-rose-400">{vital.Pulse ?? '-'}</TableCell>
+                        <TableCell className="text-center font-semibold text-cyan-600">{vital.SpO2 ?? '-'}</TableCell>
+                        <TableCell className="text-center text-amber-600">{vital.ABP ?? '-'}</TableCell>
+                        <TableCell className="text-center text-amber-600">{vital.PAP ?? '-'}</TableCell>
+                        <TableCell className="text-center font-semibold text-emerald-600">{vital.EtCO2 ?? '-'}</TableCell>
+                        <TableCell className="text-center font-semibold text-blue-600">{vital.awRR ?? '-'}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              <div className="p-4 border-t border-slate-200 bg-slate-50/50">
+                <p className="text-sm text-slate-500">
+                  Total records: <span className="font-bold text-slate-800">{allExtractedVitals.length}</span>
                 </p>
               </div>
-            </div>
-
-            <Button
-              onClick={processVideo}
-              disabled={isProcessing}
-              className="bg-primary hover:bg-primary/90"
-            >
-              {isProcessing ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Processing with Tesseract OCR {progress}%
-                </>
-              ) : (
-                <>
-                  <Download className="w-4 h-4 mr-2" />
-                  Extract & Download CSV
-                </>
-              )}
-            </Button>
+            </Card>
           </div>
-
-          {isProcessing && (
-            <div className="space-y-2">
-              <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
-                <div
-                  className="h-full bg-primary transition-all duration-300"
-                  style={{ width: `${progress}%` }}
-                />
-              </div>
-              {ocrProgress && (
-                <div className="text-sm text-muted-foreground">
-                  <p className="font-medium">{ocrProgress.message}</p>
-                  <p className="text-xs mt-1">Tesseract OCR: {ocrProgress.status}</p>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Real-time Chart */}
-      {(vitalsHistory.length > 0 || isProcessing) && (
-        <div className="mt-6">
-          <h3 className="text-xl font-bold text-foreground mb-4">Extraction Trends</h3>
-          <div className="h-[300px] w-full bg-card border border-border rounded-lg p-4">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={vitalsHistory}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis dataKey="time" stroke="hsl(var(--muted-foreground))" />
-                <YAxis stroke="hsl(var(--muted-foreground))" />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'hsl(var(--card))',
-                    border: '1px solid hsl(var(--border))'
-                  }}
-                />
-                <Legend />
-                <Line type="monotone" dataKey="HR" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} />
-                <Line type="monotone" dataKey="SpO2" stroke="hsl(var(--chart-2))" strokeWidth={2} dot={false} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      )}
-
-      {/* Vitals Table */}
-      {allExtractedVitals.length > 0 && (
-        <div className="mt-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xl font-bold text-foreground">All Extracted Vitals</h3>
-            <Button
-              onClick={() => {
-                const csvContent = generateCSV(allExtractedVitals);
-                downloadCSV(csvContent, `vitals-table-${Date.now()}.csv`);
-                toast({
-                  title: "Export successful",
-                  description: "Vitals table exported to CSV",
-                });
-              }}
-              variant="outline"
-              className="gap-2"
-            >
-              <FileSpreadsheet className="w-4 h-4" />
-              Export Table to CSV
-            </Button>
-          </div>
-
-          <Card className="border-border">
-            <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
-              <Table>
-                <TableHeader className="sticky top-0 bg-muted z-10">
-                  <TableRow>
-                    <TableHead className="font-semibold">Time</TableHead>
-                    <TableHead className="font-semibold">HR (bpm)</TableHead>
-                    <TableHead className="font-semibold">Pulse (bpm)</TableHead>
-                    <TableHead className="font-semibold">SpO2 (%)</TableHead>
-                    <TableHead className="font-semibold">ABP (mmHg)</TableHead>
-                    <TableHead className="font-semibold">PAP (mmHg)</TableHead>
-                    <TableHead className="font-semibold">EtCO2 (mmHg)</TableHead>
-                    <TableHead className="font-semibold">awRR (/min)</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {allExtractedVitals.map((vital, index) => (
-                    <TableRow key={index}>
-                      <TableCell className="font-medium">{vital.timeString}</TableCell>
-                      <TableCell>{vital.HR ?? 'N/A'}</TableCell>
-                      <TableCell>{vital.Pulse ?? 'N/A'}</TableCell>
-                      <TableCell>{vital.SpO2 ?? 'N/A'}</TableCell>
-                      <TableCell>{vital.ABP ?? 'N/A'}</TableCell>
-                      <TableCell>{vital.PAP ?? 'N/A'}</TableCell>
-                      <TableCell>{vital.EtCO2 ?? 'N/A'}</TableCell>
-                      <TableCell>{vital.awRR ?? 'N/A'}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-            <div className="p-4 border-t border-border bg-muted/30">
-              <p className="text-sm text-muted-foreground">
-                Total records: <span className="font-semibold text-foreground">{allExtractedVitals.length}</span>
-              </p>
-            </div>
-          </Card>
-        </div>
-      )}
-    </Card>
+        )}
+      </Card>
+    </div>
   );
 };
 

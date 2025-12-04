@@ -1,6 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { toast } from 'sonner';
-import { AlertTriangle } from 'lucide-react';
+import { io } from 'socket.io-client';
 
 interface VitalRecord {
     patient_id?: number;
@@ -27,6 +26,7 @@ export interface VitalAlert {
     type: 'high' | 'low';
     severity: 'warning' | 'critical';
     timestamp: string;
+    source?: 'camera' | 'video';
 }
 
 interface PatientVitalMonitorProps {
@@ -45,7 +45,7 @@ const VITAL_RANGES = {
     awRR: { low: 12, high: 20, criticalLow: 8, criticalHigh: 25 },
 };
 
-// Store notifications per patient in memory
+// Store notifications per patient in memory (simple: current alerts only)
 const patientNotifications = new Map<number, VitalAlert[]>();
 const listeners = new Set<() => void>();
 
@@ -59,13 +59,14 @@ const notifyListeners = () => {
 };
 
 const PatientVitalMonitor = ({ vitals, patient }: PatientVitalMonitorProps) => {
-    const previousVitalsRef = useRef<Set<string>>(new Set());
-    const lastCheckTimeRef = useRef<number>(Date.now());
+    // Start from 0 so the initial latestVital is processed when component mounts
+    const lastCheckTimeRef = useRef<number>(0);
 
     useEffect(() => {
         if (!patient || vitals.length === 0) return;
 
         const latestVital = vitals[vitals.length - 1];
+        console.debug('[PatientVitalMonitor] checking latestVital', patient.patient_id, latestVital);
         const patientId = patient.patient_id;
 
         // Only check vitals that are newer than our last check
@@ -80,7 +81,8 @@ const PatientVitalMonitor = ({ vitals, patient }: PatientVitalMonitorProps) => {
         if (latestVital.hr !== null) {
             if (latestVital.hr < VITAL_RANGES.HR.low || latestVital.hr > VITAL_RANGES.HR.high) {
                 const alertId = `${patientId}-hr-${latestVital.created_at}`;
-                if (!previousVitalsRef.current.has(alertId)) {
+                // Unique alert for this timestamp. Keep once per timestamp.
+                if (!newAlerts.some(a => a.id === alertId)) {
                     newAlerts.push({
                         id: alertId,
                         patientId,
@@ -90,7 +92,6 @@ const PatientVitalMonitor = ({ vitals, patient }: PatientVitalMonitorProps) => {
                         severity: latestVital.hr < VITAL_RANGES.HR.criticalLow || latestVital.hr > VITAL_RANGES.HR.criticalHigh ? 'critical' : 'warning',
                         timestamp: latestVital.created_at,
                     });
-                    previousVitalsRef.current.add(alertId);
                 }
             }
         }
@@ -99,7 +100,7 @@ const PatientVitalMonitor = ({ vitals, patient }: PatientVitalMonitorProps) => {
         if (latestVital.pulse !== null) {
             if (latestVital.pulse < VITAL_RANGES.Pulse.low || latestVital.pulse > VITAL_RANGES.Pulse.high) {
                 const alertId = `${patientId}-pulse-${latestVital.created_at}`;
-                if (!previousVitalsRef.current.has(alertId)) {
+                if (!newAlerts.some(a => a.id === alertId)) {
                     newAlerts.push({
                         id: alertId,
                         patientId,
@@ -109,7 +110,6 @@ const PatientVitalMonitor = ({ vitals, patient }: PatientVitalMonitorProps) => {
                         severity: latestVital.pulse < VITAL_RANGES.Pulse.criticalLow || latestVital.pulse > VITAL_RANGES.Pulse.criticalHigh ? 'critical' : 'warning',
                         timestamp: latestVital.created_at,
                     });
-                    previousVitalsRef.current.add(alertId);
                 }
             }
         }
@@ -118,7 +118,7 @@ const PatientVitalMonitor = ({ vitals, patient }: PatientVitalMonitorProps) => {
         if (latestVital.spo2 !== null) {
             if (latestVital.spo2 < VITAL_RANGES.SpO2.low) {
                 const alertId = `${patientId}-spo2-${latestVital.created_at}`;
-                if (!previousVitalsRef.current.has(alertId)) {
+                if (!newAlerts.some(a => a.id === alertId)) {
                     newAlerts.push({
                         id: alertId,
                         patientId,
@@ -128,7 +128,6 @@ const PatientVitalMonitor = ({ vitals, patient }: PatientVitalMonitorProps) => {
                         severity: latestVital.spo2 < VITAL_RANGES.SpO2.criticalLow ? 'critical' : 'warning',
                         timestamp: latestVital.created_at,
                     });
-                    previousVitalsRef.current.add(alertId);
                 }
             }
         }
@@ -138,7 +137,7 @@ const PatientVitalMonitor = ({ vitals, patient }: PatientVitalMonitorProps) => {
             const abpSys = parseInt(latestVital.abp.split('/')[0]);
             if (!isNaN(abpSys) && (abpSys < VITAL_RANGES.ABP_Sys.low || abpSys > VITAL_RANGES.ABP_Sys.high)) {
                 const alertId = `${patientId}-abp-${latestVital.created_at}`;
-                if (!previousVitalsRef.current.has(alertId)) {
+                if (!newAlerts.some(a => a.id === alertId)) {
                     newAlerts.push({
                         id: alertId,
                         patientId,
@@ -148,7 +147,6 @@ const PatientVitalMonitor = ({ vitals, patient }: PatientVitalMonitorProps) => {
                         severity: abpSys < VITAL_RANGES.ABP_Sys.criticalLow || abpSys > VITAL_RANGES.ABP_Sys.criticalHigh ? 'critical' : 'warning',
                         timestamp: latestVital.created_at,
                     });
-                    previousVitalsRef.current.add(alertId);
                 }
             }
         }
@@ -158,7 +156,7 @@ const PatientVitalMonitor = ({ vitals, patient }: PatientVitalMonitorProps) => {
             const papDia = parseInt(latestVital.pap.split('/')[1]);
             if (!isNaN(papDia) && (papDia < VITAL_RANGES.PAP_Dia.low || papDia > VITAL_RANGES.PAP_Dia.high)) {
                 const alertId = `${patientId}-pap-${latestVital.created_at}`;
-                if (!previousVitalsRef.current.has(alertId)) {
+                if (!newAlerts.some(a => a.id === alertId)) {
                     newAlerts.push({
                         id: alertId,
                         patientId,
@@ -168,7 +166,6 @@ const PatientVitalMonitor = ({ vitals, patient }: PatientVitalMonitorProps) => {
                         severity: papDia < VITAL_RANGES.PAP_Dia.criticalLow || papDia > VITAL_RANGES.PAP_Dia.criticalHigh ? 'critical' : 'warning',
                         timestamp: latestVital.created_at,
                     });
-                    previousVitalsRef.current.add(alertId);
                 }
             }
         }
@@ -177,7 +174,7 @@ const PatientVitalMonitor = ({ vitals, patient }: PatientVitalMonitorProps) => {
         if (latestVital.etco2 !== null) {
             if (latestVital.etco2 < VITAL_RANGES.EtCO2.low || latestVital.etco2 > VITAL_RANGES.EtCO2.high) {
                 const alertId = `${patientId}-etco2-${latestVital.created_at}`;
-                if (!previousVitalsRef.current.has(alertId)) {
+                if (!newAlerts.some(a => a.id === alertId)) {
                     newAlerts.push({
                         id: alertId,
                         patientId,
@@ -187,7 +184,6 @@ const PatientVitalMonitor = ({ vitals, patient }: PatientVitalMonitorProps) => {
                         severity: latestVital.etco2 < VITAL_RANGES.EtCO2.criticalLow || latestVital.etco2 > VITAL_RANGES.EtCO2.criticalHigh ? 'critical' : 'warning',
                         timestamp: latestVital.created_at,
                     });
-                    previousVitalsRef.current.add(alertId);
                 }
             }
         }
@@ -196,7 +192,7 @@ const PatientVitalMonitor = ({ vitals, patient }: PatientVitalMonitorProps) => {
         if (latestVital.awrr !== null) {
             if (latestVital.awrr < VITAL_RANGES.awRR.low || latestVital.awrr > VITAL_RANGES.awRR.high) {
                 const alertId = `${patientId}-awrr-${latestVital.created_at}`;
-                if (!previousVitalsRef.current.has(alertId)) {
+                if (!newAlerts.some(a => a.id === alertId)) {
                     newAlerts.push({
                         id: alertId,
                         patientId,
@@ -206,76 +202,43 @@ const PatientVitalMonitor = ({ vitals, patient }: PatientVitalMonitorProps) => {
                         severity: latestVital.awrr < VITAL_RANGES.awRR.criticalLow || latestVital.awrr > VITAL_RANGES.awRR.criticalHigh ? 'critical' : 'warning',
                         timestamp: latestVital.created_at,
                     });
-                    previousVitalsRef.current.add(alertId);
                 }
             }
         }
 
-        // Store alerts for this patient
+        // Store alerts for this patient 
         if (newAlerts.length > 0) {
-            const existingAlerts = patientNotifications.get(patientId) || [];
-            const existingIds = new Set(existingAlerts.map(a => a.id));
-            const uniqueNewAlerts = newAlerts.filter(a => !existingIds.has(a.id));
-
-            if (uniqueNewAlerts.length > 0) {
-                patientNotifications.set(patientId, [...existingAlerts, ...uniqueNewAlerts]);
+            patientNotifications.set(patientId, newAlerts);
+            notifyListeners();
+        } else {
+            // Clear any existing alerts if newAlerts is empty
+            if (patientNotifications.has(patientId)) {
+                patientNotifications.delete(patientId);
                 notifyListeners();
-
-                // Show toast notifications for new alerts
-                uniqueNewAlerts.forEach(alert => {
-                    toast(
-                        <div className="flex flex-col gap-1.5">
-                            <div className="text-xs font-semibold text-muted-foreground border-b pb-1">
-                                Patient: {patient.patient_name} (ID: #{patient.patient_id})
-                            </div>
-                            <span className="font-bold flex items-center gap-2">
-                                {alert.severity === 'critical' ? 'CRITICAL ALERT' : 'Vital Warning'}
-                                {alert.severity === 'critical' && <AlertTriangle className="w-4 h-4 text-red-600" />}
-                            </span>
-                            <span>
-                                {alert.vital} is {alert.type === 'high' ? 'High' : 'Low'}: <strong>{alert.value}</strong>
-                            </span>
-                        </div>,
-                        {
-                            duration: alert.severity === 'critical' ? 10000 : 5000,
-                            position: 'top-right',
-                            style: {
-                                borderLeft: alert.severity === 'critical' ? '4px solid red' : '4px solid orange',
-                            }
-                        }
-                    );
-
-                    // Send Remote Notification (Email/SMS) if configured
-                    // Only for critical alerts to avoid spam
-                    if (alert.severity === 'critical') {
-                        const email = localStorage.getItem("notify_email");
-                        const phone = localStorage.getItem("notify_phone");
-
-                        if (email || phone) {
-                            // Simple throttling: check if we sent an alert for this vital in the last 5 minutes
-                            const throttleKey = `last_notify_${patientId}_${alert.vital}`;
-                            const lastSent = localStorage.getItem(throttleKey);
-                            const now = Date.now();
-
-                            if (!lastSent || now - parseInt(lastSent) > 5 * 60 * 1000) {
-                                fetch('http://localhost:3000/api/send-alert', {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({
-                                        email,
-                                        phone,
-                                        alert: { ...alert, patientId }
-                                    })
-                                }).catch(err => console.error("Failed to send remote alert:", err));
-
-                                localStorage.setItem(throttleKey, now.toString());
-                            }
-                        }
-                    }
-                });
             }
         }
     }, [vitals, patient]);
+
+    // Setup socket listener for server-generated alerts
+    useEffect(() => {
+        if (!patient) return;
+
+        const socket = io('http://localhost:3000');
+        socket.emit('join-patient', patient.patient_id);
+
+        const onVitalAlert = (alert: VitalAlert) => {
+            if (alert && alert.patientId === patient.patient_id) {
+                addManualAlert(patient.patient_id, alert);
+            }
+        };
+
+        socket.on('vital-alert', onVitalAlert);
+
+        return () => {
+            socket.off('vital-alert', onVitalAlert);
+            socket.disconnect();
+        };
+    }, [patient]);
 
     // This component doesn't render anything - it just monitors vitals
     return null;
@@ -293,11 +256,8 @@ export const clearPatientNotifications = (patientId: number): void => {
 };
 
 export const getAllNotifications = (): VitalAlert[] => {
-    const allAlerts: VitalAlert[] = [];
-    patientNotifications.forEach((alerts) => {
-        allAlerts.push(...alerts);
-    });
-    return allAlerts.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    // Global notifications are intentionally disabled — we only show per-patient alerts
+    return [];
 };
 
 export const addManualAlert = (patientId: number, alert: VitalAlert) => {

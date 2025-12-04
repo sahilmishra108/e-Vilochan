@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Camera, Square, Loader2 } from 'lucide-react';
+import { Camera, Square, Loader2, AlertTriangle, Activity } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { io } from 'socket.io-client';
 import { extractVitalsWithOCR, OCRProgress } from '@/lib/ocr';
@@ -15,6 +15,7 @@ interface CameraFeedProps {
 
 const CameraFeed = ({ patientId }: CameraFeedProps) => {
   const [isCapturing, setIsCapturing] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [ocrProgress, setOcrProgress] = useState<OCRProgress | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -69,16 +70,40 @@ const CameraFeed = ({ patientId }: CameraFeedProps) => {
   }, [patientId]);
 
   const startCapture = async () => {
+    // Clear previous errors
+    setCameraError(null);
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          width: { ideal: 1920 },
-          height: { ideal: 1080 }
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        setCameraError('Camera not supported in this browser. Use Chrome/Edge/Firefox on a secure context (localhost/HTTPS).');
+        return;
+      }
+
+      // Try more forgiving constraints — device may not support 1080p
+      let stream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          }
+        });
+      } catch (err) {
+        // If we got overconstrained, try without constraints
+        const e = err as Error & { name?: string };
+        if (e && e.name === 'OverconstrainedError') {
+          try {
+            stream = await navigator.mediaDevices.getUserMedia({ video: true });
+          } catch (nestedErr) {
+            throw nestedErr;
+          }
+        } else {
+          throw err;
         }
-      });
+      }
 
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
+        try { videoRef.current.play(); } catch (e) { /* ignore */ }
         setIsCapturing(true);
 
         // Capture frame every 3 seconds
@@ -92,10 +117,28 @@ const CameraFeed = ({ patientId }: CameraFeedProps) => {
         });
       }
     } catch (error) {
+      // Provide more explicit error messages
+      const e = error as Error & { name?: string };
+      console.error('Camera error', e);
+      let msg = 'Failed to access camera. Check your browser permissions/device.';
+
+      if (e && (e.name === 'NotAllowedError' || e.name === 'SecurityError' || e.name === 'PermissionDeniedError')) {
+        msg = 'Camera permission denied. Please allow camera access in your browser and try again.';
+      } else if (e && e.name === 'NotFoundError') {
+        msg = 'No camera device found. Attach or enable a camera, then retry.';
+      } else if (e && e.name === 'NotReadableError') {
+        msg = 'Camera is already in use by another application. Close other apps and try again.';
+      } else if (e && e.name === 'OverconstrainedError') {
+        msg = 'Camera does not support the requested resolution. Try a lower resolution or a different device.';
+      } else if (e?.message) {
+        msg = 'Failed to access camera: ' + e.message;
+      }
+
+      setCameraError(msg);
       toast({
-        title: "Camera error",
-        description: "Failed to access camera",
-        variant: "destructive",
+        title: 'Camera error',
+        description: msg,
+        variant: 'destructive',
       });
     }
   };
@@ -190,145 +233,181 @@ const CameraFeed = ({ patientId }: CameraFeedProps) => {
   };
 
   return (
-    <Card className="p-6 bg-card border-border">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
-          <Camera className="w-6 h-6 text-primary" />
-          Live Camera
-        </h2>
+    <div className="space-y-6 animate-fade-in">
+      <Card className="p-6 bg-white/60 backdrop-blur-md border-white/20 shadow-lg rounded-2xl">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
+            <div className="p-2 bg-primary/10 rounded-lg text-primary">
+              <Camera className="w-6 h-6" />
+            </div>
+            Live Camera Feed
+          </h2>
 
-        <div className="flex gap-2">
-          {!isCapturing ? (
-            <Button onClick={startCapture} className="bg-primary hover:bg-primary/90">
-              <Camera className="w-4 h-4 mr-2" />
-              Start Capture
-            </Button>
-          ) : (
-            <Button onClick={stopCapture} variant="destructive">
-              <Square className="w-4 h-4 mr-2" />
-              Stop Capture
-            </Button>
-          )}
+          <div className="flex gap-2">
+            {!isCapturing ? (
+              <Button onClick={() => { setCameraError(null); startCapture(); }} className="bg-primary hover:bg-primary/90 rounded-full shadow-lg hover:shadow-primary/25 transition-all hover:scale-105">
+                <Camera className="w-4 h-4 mr-2" />
+                Start Capture
+              </Button>
+            ) : (
+              <Button onClick={stopCapture} variant="destructive" className="rounded-full shadow-lg hover:shadow-red-500/25 transition-all hover:scale-105">
+                <Square className="w-4 h-4 mr-2" />
+                Stop Capture
+              </Button>
+            )}
+          </div>
         </div>
-      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="relative bg-[hsl(var(--monitor-bg))] rounded-lg overflow-hidden border-2 border-[hsl(var(--monitor-border))]">
-          <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            muted
-            className="w-full h-auto"
-          />
-          <canvas ref={canvasRef} className="hidden" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="relative bg-slate-950 rounded-2xl overflow-hidden border-4 border-slate-800 shadow-2xl">
+            <div className="absolute top-4 left-4 z-10 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+              <span className="text-xs font-mono text-red-500 font-bold tracking-widest">REC</span>
+            </div>
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              className="w-full h-auto"
+            />
+            <canvas ref={canvasRef} className="hidden" />
 
-          {isProcessing && (
-            <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center gap-3">
-              <Loader2 className="w-8 h-8 text-white animate-spin" />
-              {ocrProgress && (
-                <div className="text-white text-center px-4">
-                  <p className="text-sm font-medium">{ocrProgress.message}</p>
-                  <div className="w-48 h-2 bg-white/20 rounded-full mt-2 overflow-hidden">
-                    <div
-                      className="h-full bg-primary transition-all duration-300"
-                      style={{ width: `${ocrProgress.progress}%` }}
-                    />
+            {isProcessing && (
+              <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center gap-4">
+                <div className="relative">
+                  <div className="absolute inset-0 rounded-full blur-md bg-primary/50 animate-pulse"></div>
+                  <Loader2 className="w-10 h-10 text-white animate-spin relative z-10" />
+                </div>
+                {ocrProgress && (
+                  <div className="text-white text-center px-6 py-3 bg-black/40 rounded-xl backdrop-blur-md border border-white/10">
+                    <p className="text-sm font-medium mb-2">{ocrProgress.message}</p>
+                    <div className="w-48 h-1.5 bg-white/10 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-primary to-secondary transition-all duration-300"
+                        style={{ width: `${ocrProgress.progress}%` }}
+                      />
+                    </div>
+                    <p className="text-[10px] mt-1.5 text-white/60 font-mono">{ocrProgress.progress}%</p>
                   </div>
-                  <p className="text-xs mt-1 text-white/80">{ocrProgress.progress}%</p>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="bg-slate-950 rounded-2xl p-1 border-4 border-slate-800 shadow-2xl flex flex-col">
+            <div className="bg-slate-900/50 p-3 border-b border-slate-800 flex justify-between items-center">
+              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Last Processed Frame</h3>
+              <span className="text-[10px] text-slate-500 font-mono">{new Date().toLocaleTimeString()}</span>
+            </div>
+            <div className="flex-1 flex items-center justify-center bg-slate-900/30 p-4">
+              {previewUrl ? (
+                <img src={previewUrl} alt="Last frame" className="w-full h-auto rounded-lg border border-slate-700/50 shadow-lg" />
+              ) : (
+                <div className="flex flex-col items-center gap-3 text-slate-600">
+                  <Camera className="w-12 h-12 opacity-20" />
+                  <p className="text-sm font-medium">No frame captured yet</p>
                 </div>
               )}
             </div>
-          )}
+          </div>
         </div>
 
-        <div className="bg-[hsl(var(--monitor-bg))] rounded-lg p-4 border-2 border-[hsl(var(--monitor-border))]">
-          <h3 className="text-sm font-medium text-muted-foreground mb-3">Last Frame</h3>
-          {previewUrl ? (
-            <img src={previewUrl} alt="Last frame" className="w-full h-auto rounded" />
-          ) : (
-            <div className="w-full aspect-video flex items-center justify-center text-muted-foreground">
-              No frame captured yet
+        <div className="mt-4 text-sm text-muted-foreground">
+          {isCapturing && (
+            <p className="text-sm text-primary font-medium flex items-center gap-2">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+              </span>
+              Capturing every 3 seconds
+            </p>
+          )}
+
+          {cameraError && (
+            <div className="mt-4 p-4 bg-red-50 border border-red-100 rounded-xl flex items-start gap-3 text-red-600">
+              <AlertTriangle className="w-5 h-5 shrink-0" />
+              <p className="text-sm font-medium">{cameraError}</p>
             </div>
           )}
         </div>
-      </div>
 
-      <div className="mt-4 text-sm text-muted-foreground">
-        {isCapturing && (
-          <p className="text-sm text-muted-foreground">Capturing every 3 seconds</p>
-        )}
-      </div>
+        {/* Live KPIs */}
+        <div className="mt-8 space-y-6">
+          <h3 className="text-xl font-bold text-foreground flex items-center gap-2">
+            <Activity className="w-5 h-5 text-primary" />
+            Live Vitals Analysis
+          </h3>
 
-      {/* Live KPIs */}
-      <div className="mt-6 space-y-4">
-        <h3 className="text-xl font-bold text-foreground">Live Vitals</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <VitalCard
+              label="HR"
+              value={latestVitals?.HR ?? null}
+              unit="bpm"
+            />
+            <VitalCard
+              label="Pulse"
+              value={latestVitals?.Pulse ?? null}
+              unit="bpm"
+            />
+            <VitalCard
+              label="SpO2"
+              value={latestVitals?.SpO2 ?? null}
+              unit="%"
+            />
+            <VitalCard
+              label="EtCO2"
+              value={latestVitals?.EtCO2 ?? null}
+              unit="mmHg"
+            />
+          </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <VitalCard
-            label="HR"
-            value={latestVitals?.HR ?? null}
-            unit="bpm"
-          />
-          <VitalCard
-            label="Pulse"
-            value={latestVitals?.Pulse ?? null}
-            unit="bpm"
-          />
-          <VitalCard
-            label="SpO2"
-            value={latestVitals?.SpO2 ?? null}
-            unit="%"
-          />
-          <VitalCard
-            label="EtCO2"
-            value={latestVitals?.EtCO2 ?? null}
-            unit="mmHg"
-          />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <VitalCard
+              label="ABP"
+              value={latestVitals?.ABP ?? null}
+              unit="mmHg"
+            />
+            <VitalCard
+              label="PAP"
+              value={latestVitals?.PAP ?? null}
+              unit="mmHg"
+            />
+            <VitalCard
+              label="awRR"
+              value={latestVitals?.awRR ?? null}
+              unit="/min"
+            />
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <VitalCard
-            label="ABP"
-            value={latestVitals?.ABP ?? null}
-            unit="mmHg"
-          />
-          <VitalCard
-            label="PAP"
-            value={latestVitals?.PAP ?? null}
-            unit="mmHg"
-          />
-          <VitalCard
-            label="awRR"
-            value={latestVitals?.awRR ?? null}
-            unit="/min"
-          />
+        {/* Real-time Chart */}
+        <div className="mt-8">
+          <h3 className="text-xl font-bold text-foreground mb-4">Real-Time Trends</h3>
+          <div className="h-[300px] w-full bg-white/40 backdrop-blur-sm border border-white/20 rounded-2xl p-4 shadow-inner">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={vitalsHistory}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" vertical={false} />
+                <XAxis dataKey="time" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
+                <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                    borderRadius: '12px',
+                    border: '1px solid rgba(0,0,0,0.1)',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                    fontSize: '12px'
+                  }}
+                />
+                <Legend />
+                <Line type="monotone" dataKey="HR" stroke="#f43f5e" strokeWidth={3} dot={false} activeDot={{ r: 6 }} />
+                <Line type="monotone" dataKey="SpO2" stroke="#06b6d4" strokeWidth={3} dot={false} activeDot={{ r: 6 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
         </div>
-      </div>
-
-      {/* Real-time Chart */}
-      <div className="mt-6">
-        <h3 className="text-xl font-bold text-foreground mb-4">Real-Time Trends</h3>
-        <div className="h-[300px] w-full bg-card border border-border rounded-lg p-4">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={vitalsHistory}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <XAxis dataKey="time" stroke="hsl(var(--muted-foreground))" />
-              <YAxis stroke="hsl(var(--muted-foreground))" />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: 'hsl(var(--card))',
-                  border: '1px solid hsl(var(--border))'
-                }}
-              />
-              <Legend />
-              <Line type="monotone" dataKey="HR" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} />
-              <Line type="monotone" dataKey="SpO2" stroke="hsl(var(--chart-2))" strokeWidth={2} dot={false} />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-    </Card>
+      </Card>
+    </div>
   );
 };
 

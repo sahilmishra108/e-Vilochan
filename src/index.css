@@ -2,54 +2,56 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here.
 All colors MUST be HSL.
 */
 
 @layer base {
   :root {
     --background: 210 20% 98%;
-    --foreground: 210 30% 15%;
+    --foreground: 215 25% 27%;
 
     --card: 0 0% 100%;
-    --card-foreground: 210 30% 15%;
+    --card-foreground: 215 25% 27%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 210 30% 15%;
+    --popover-foreground: 215 25% 27%;
 
-    --primary: 210 100% 45%;
+    --primary: 210 100% 50%;
+    /* Brighter Blue */
     --primary-foreground: 0 0% 100%;
 
-    --primary-glow: 210 100% 65%;
+    --primary-glow: 210 100% 85%;
 
-    --secondary: 150 60% 45%;
+    --secondary: 180 100% 35%;
+    /* Teal */
     --secondary-foreground: 0 0% 100%;
 
-    --muted: 210 20% 95%;
-    --muted-foreground: 210 15% 45%;
+    --muted: 210 20% 96%;
+    --muted-foreground: 215 16% 47%;
 
-    --accent: 210 100% 50%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 210 100% 96%;
+    --accent-foreground: 210 100% 50%;
 
-    --destructive: 0 85% 55%;
+    --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --alert: 25 95% 53%;
+    --alert: 35 95% 55%;
     --alert-foreground: 0 0% 100%;
 
-    --border: 210 20% 88%;
-    --input: 210 20% 92%;
-    --ring: 210 100% 45%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 210 100% 50%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
 
     /* Medical theme specifics */
-    --medical-bg: 210 25% 96%;
-    --monitor-bg: 215 30% 12%;
-    --monitor-border: 210 30% 25%;
-    --vital-success: 150 60% 45%;
-    --vital-warning: 45 95% 50%;
-    --vital-critical: 0 85% 55%;
+    --medical-bg: 210 20% 98%;
+    --monitor-bg: 220 15% 10%;
+    --monitor-border: 220 15% 20%;
+    --vital-success: 150 70% 40%;
+    --vital-warning: 40 95% 55%;
+    --vital-critical: 0 85% 60%;
 
     /* Transitions */
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -123,6 +125,16 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground;
+    font-family: 'Inter', sans-serif;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: 'Plus Jakarta Sans', sans-serif;
   }
 }
 

@@ -50,23 +50,29 @@ const PatientRecords = () => {
     }, [searchQuery, patients]);
 
     return (
-        <div className="min-h-screen bg-slate-50/50">
+        <div className="min-h-screen bg-background font-sans selection:bg-primary/20 selection:text-primary">
+            {/* Dynamic Background */}
+            <div className="fixed inset-0 z-0 pointer-events-none">
+                <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808008_1px,transparent_1px),linear-gradient(to_bottom,#80808008_1px,transparent_1px)] bg-[size:24px_24px] animate-grid-flow"></div>
+                <div className="absolute top-0 left-0 right-0 h-full bg-gradient-to-br from-primary/5 via-background to-secondary/5"></div>
+            </div>
+
             {/* Header Section */}
-            <div className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+            <div className="sticky top-0 z-30 bg-white/70 backdrop-blur-xl border-b border-white/20 shadow-sm transition-all duration-300">
                 <div className="max-w-7xl mx-auto px-6 py-4">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-blue-50 rounded-lg">
-                                <FileText className="w-6 h-6 text-blue-600" />
+                        <div className="flex items-center gap-4">
+                            <div className="p-2.5 bg-primary/10 rounded-xl text-primary">
+                                <FileText className="w-6 h-6" />
                             </div>
                             <div>
-                                <h1 className="text-2xl font-bold text-slate-900">Patient Records</h1>
-                                <p className="text-sm text-slate-500">Manage and monitor patient status</p>
+                                <h1 className="text-2xl font-bold text-foreground tracking-tight">Patient Records</h1>
+                                <p className="text-sm text-muted-foreground">Manage and monitor patient status</p>
                             </div>
                         </div>
                         <div className="flex items-center gap-3">
                             <Link to="/">
-                                <Button variant="ghost" className="text-slate-600 hover:text-slate-900">
+                                <Button variant="ghost" className="text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-full">
                                     Back to Home
                                 </Button>
                             </Link>
@@ -76,53 +82,53 @@ const PatientRecords = () => {
                 </div>
             </div>
 
-            <div className="max-w-7xl mx-auto px-6 py-8">
+            <div className="relative z-10 max-w-7xl mx-auto px-6 py-8">
                 {/* Search and Filter Bar */}
                 <div className="mb-8 flex flex-col sm:flex-row gap-4">
-                    <div className="relative flex-1 max-w-md">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <div className="relative flex-1 max-w-md group">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
                         <Input
                             placeholder="Search by name, ID, or diagnosis..."
-                            className="pl-10 bg-white border-slate-200 focus:border-blue-500 transition-all"
+                            className="pl-10 bg-white/50 border-border focus:border-primary/50 focus:ring-primary/20 transition-all rounded-full shadow-sm hover:bg-white/80"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
                     </div>
-                    <div className="flex items-center gap-2 text-sm text-slate-500 ml-auto">
-                        <span className="font-medium text-slate-900">{filteredPatients.length}</span> patients found
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground ml-auto bg-white/50 px-4 py-2 rounded-full border border-white/20 shadow-sm">
+                        <span className="font-bold text-primary">{filteredPatients.length}</span> patients found
                     </div>
                 </div>
 
                 {loading ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {[1, 2, 3, 4, 5, 6].map((i) => (
-                            <div key={i} className="h-64 bg-slate-200 rounded-xl animate-pulse"></div>
+                            <div key={i} className="h-64 bg-muted/50 rounded-2xl animate-pulse"></div>
                         ))}
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-fade-in-up">
                         {filteredPatients.map((patient) => (
-                            <Card key={patient.patient_id} className="group hover:shadow-xl transition-all duration-300 border-slate-200 hover:border-blue-200 bg-white overflow-hidden">
-                                <div className="h-1.5 w-full bg-gradient-to-r from-blue-500 to-teal-400"></div>
+                            <Card key={patient.patient_id} className="group hover:shadow-2xl transition-all duration-300 border-white/20 hover:border-primary/20 bg-white/60 backdrop-blur-md overflow-hidden rounded-2xl hover:-translate-y-1">
+                                <div className="h-1.5 w-full bg-gradient-to-r from-primary to-secondary opacity-80 group-hover:opacity-100 transition-opacity"></div>
                                 <CardHeader className="pb-3 pt-5">
                                     <div className="flex justify-between items-start">
                                         <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 font-bold text-lg group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors">
+                                            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary/10 to-secondary/10 flex items-center justify-center text-primary font-bold text-xl group-hover:scale-110 transition-transform shadow-inner">
                                                 {patient.patient_name.charAt(0)}
                                             </div>
                                             <div>
-                                                <CardTitle className="text-lg font-bold text-slate-900 group-hover:text-blue-700 transition-colors">
+                                                <CardTitle className="text-lg font-bold text-foreground group-hover:text-primary transition-colors">
                                                     {patient.patient_name}
                                                 </CardTitle>
-                                                <div className="text-xs font-medium text-slate-500 flex items-center gap-1 mt-0.5">
-                                                    <span className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-600">ID: #{patient.patient_id}</span>
+                                                <div className="text-xs font-medium text-muted-foreground flex items-center gap-1.5 mt-1">
+                                                    <span className="bg-muted px-2 py-0.5 rounded-md border border-border">ID: #{patient.patient_id}</span>
                                                     {patient.bed_id && (
                                                         <>
-                                                            <span>•</span>
-                                                            <span className="bg-blue-50 px-1.5 py-0.5 rounded text-blue-600 font-medium border border-blue-100">Bed #{patient.bed_id}</span>
+                                                            <span className="bg-secondary/10 px-2 py-0.5 rounded-md text-secondary-foreground border border-secondary/20 font-medium">Bed #{patient.bed_id}</span>
                                                         </>
                                                     )}
-                                                    <span>•</span>
+                                                </div>
+                                                <div className="text-xs text-muted-foreground mt-1 flex gap-2">
                                                     <span>{patient.gender}</span>
                                                     <span>•</span>
                                                     <span>{patient.age} yrs</span>
@@ -130,26 +136,28 @@ const PatientRecords = () => {
                                             </div>
                                         </div>
                                         <div className="relative">
-                                            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse absolute top-1 right-1"></div>
-                                            <Activity className="text-slate-300 w-5 h-5" />
+                                            <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse absolute top-0 right-0 ring-4 ring-white/50"></div>
+                                            <Activity className="text-muted-foreground/50 w-6 h-6" />
                                         </div>
                                     </div>
                                 </CardHeader>
                                 <CardContent>
                                     <div className="space-y-4">
-                                        <div className="bg-slate-50 rounded-lg p-3 border border-slate-100">
-                                            <div className="text-xs text-slate-500 uppercase tracking-wider font-semibold mb-1">Diagnosis</div>
-                                            <div className="font-medium text-slate-800">{patient.diagnosis}</div>
+                                        <div className="bg-white/50 rounded-xl p-4 border border-white/40 shadow-sm">
+                                            <div className="text-xs text-muted-foreground uppercase tracking-wider font-bold mb-1.5 flex items-center gap-1">
+                                                <FileText className="w-3 h-3" /> Diagnosis
+                                            </div>
+                                            <div className="font-medium text-foreground">{patient.diagnosis}</div>
                                         </div>
 
-                                        <div className="flex items-center gap-2 text-sm text-slate-500">
-                                            <Calendar className="w-4 h-4" />
+                                        <div className="flex items-center gap-2 text-sm text-muted-foreground px-1">
+                                            <Calendar className="w-4 h-4 text-primary/60" />
                                             <span>Admitted: {new Date(patient.admission_date).toLocaleDateString()}</span>
                                         </div>
 
-                                        <div className="pt-2 flex gap-2">
+                                        <div className="pt-2 flex gap-3">
                                             <Link to={`/dashboard?patientId=${patient.patient_id}`} className="flex-1">
-                                                <Button className="w-full bg-white border-2 border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white font-semibold transition-all group-hover:shadow-md">
+                                                <Button className="w-full bg-white border border-primary/20 text-primary hover:bg-primary hover:text-primary-foreground font-semibold transition-all shadow-sm hover:shadow-md rounded-xl">
                                                     Monitor
                                                     <HeartPulse className="w-4 h-4 ml-2" />
                                                 </Button>
@@ -168,15 +176,15 @@ const PatientRecords = () => {
                 )}
 
                 {!loading && filteredPatients.length === 0 && (
-                    <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-slate-300">
-                        <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <Search className="w-8 h-8 text-slate-400" />
+                    <div className="text-center py-24 bg-white/40 backdrop-blur-sm rounded-3xl border border-dashed border-slate-300/50">
+                        <div className="w-20 h-20 bg-muted/50 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
+                            <Search className="w-10 h-10 text-muted-foreground/50" />
                         </div>
-                        <h3 className="text-lg font-medium text-slate-900">No patients found</h3>
-                        <p className="text-slate-500 max-w-sm mx-auto mt-2">
+                        <h3 className="text-xl font-semibold text-foreground">No patients found</h3>
+                        <p className="text-muted-foreground max-w-sm mx-auto mt-2">
                             Try adjusting your search terms or add a new patient to the system.
                         </p>
-                        <div className="mt-6">
+                        <div className="mt-8">
                             <AddPatientDialog onPatientAdded={fetchPatients} />
                         </div>
                     </div>
