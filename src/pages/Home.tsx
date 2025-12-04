@@ -79,13 +79,8 @@ const Home = () => {
                       </div>
                     </div>
                     <div className="flex items-start gap-4 group/item">
-                      <div className="p-3 rounded-xl bg-secondary/10 text-secondary group-hover/item:bg-secondary/20 transition-colors">
-                        <ShieldCheck className="w-6 h-6" />
-                      </div>
-                      <div>
-                        <h4 className="text-white font-semibold text-lg">Secure Data</h4>
-                        <p className="text-slate-400 text-sm">HIPAA Compliant</p>
-                      </div>
+                      
+                      
                     </div>
                   </div>
                 </div>
@@ -160,7 +155,7 @@ const Home = () => {
           <div className="flex flex-col md:flex-row justify-between items-center gap-6">
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-4">
-                <img src="/PATH_Logo_Color (1).png" alt="PATH" className="h-12 w-auto" />
+                
                 <div className="flex flex-col">
                   <span className="font-bold text-xl tracking-tight text-blue-400">Divya Drishti</span>
                   <span className="text-slate-400 text-xs">© 2025 All rights reserved</span>
