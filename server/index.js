@@ -45,7 +45,7 @@ const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(cors());
-app.use(express.json({ limit: '50mb' })); // Increased limit for image data if needed
+app.use(express.json({ limit: '50mb' }));
 
 // Database Connection Pool
 const pool = mysql.createPool({
@@ -57,6 +57,91 @@ const pool = mysql.createPool({
   connectionLimit: 10,
   queueLimit: 0
 });
+
+// Nodemailer Setup
+import nodemailer from 'nodemailer';
+
+const emailTransporter = nodemailer.createTransport({
+  service: 'gmail', // Standard provider, can be configured via env
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS
+  }
+});
+
+const DOCTOR_EMAIL = process.env.DOCTOR_EMAIL || 'doctor@example.com';
+
+// Alert Thresholds & Rate Limiting
+const ALERT_RANGES = {
+  HR: { low: 60, high: 100 },
+  Pulse: { low: 60, high: 100 },
+  SpO2: { low: 90, high: 100 },
+  EtCO2: { low: 35, high: 45 },
+  awRR: { low: 12, high: 20 }
+};
+
+// Rate limiting: Map<"patientId-vitalType", timestamp>
+const lastAlertTime = new Map();
+const ALERT_COOLDOWN = 5 * 60 * 1000; // 5 minutes
+
+async function checkAndAlert(vital, patientId) {
+  const alerts = [];
+
+  const check = (type, value, range) => {
+    if (value !== null && (value < range.low || value > range.high)) {
+      alerts.push({ type, value, condition: value < range.low ? 'Low' : 'High' });
+    }
+  };
+
+  check('HR', vital.hr, ALERT_RANGES.HR);
+  check('Pulse', vital.pulse, ALERT_RANGES.Pulse);
+  check('SpO2', vital.spo2, ALERT_RANGES.SpO2);
+  check('EtCO2', vital.etco2, ALERT_RANGES.EtCO2);
+  check('awRR', vital.awrr, ALERT_RANGES.awRR);
+
+  if (alerts.length === 0) return;
+
+  // Fetch Patient Name
+  let patientName = 'Unknown Patient';
+  try {
+    const [rows] = await pool.query('SELECT patient_name FROM patients WHERE patient_id = ?', [patientId]);
+    if (rows.length > 0) {
+      patientName = rows[0].patient_name;
+    }
+  } catch (err) {
+    console.error('Error fetching patient name for alert:', err);
+  }
+
+  for (const alert of alerts) {
+    const key = `${patientId}-${alert.type}`;
+    const now = Date.now();
+    const lastTime = lastAlertTime.get(key) || 0;
+
+    if (now - lastTime > ALERT_COOLDOWN) {
+      // Send Email
+      const mailOptions = {
+        from: process.env.EMAIL_USER,
+        to: DOCTOR_EMAIL,
+        subject: `ALERT: ${patientName} (ID: ${patientId}) - ${alert.type} ${alert.condition}`,
+        text: `CRITICAL VITAL SIGN ALERT\n\n` +
+          `Patient Name: ${patientName}\n` +
+          `Patient ID:   ${patientId}\n\n` +
+          `Vital Sign:   ${alert.type}\n` +
+          `Status:       ${alert.condition} (${alert.value})\n` +
+          `Timestamp:    ${new Date().toLocaleString()}\n` +
+          `Please attend to the patient immediately.`
+      };
+
+      try {
+        await emailTransporter.sendMail(mailOptions);
+        console.log(`Alert email sent for Patient ${patientId} (${patientName}) - ${alert.type}`);
+        lastAlertTime.set(key, now);
+      } catch (error) {
+        console.error('Failed to send alert email:', error);
+      }
+    }
+  }
+}
 
 // Test DB Connection
 pool.getConnection()
@@ -244,6 +329,48 @@ app.get('/api/vitals/:patientId', async (req, res) => {
     res.json(rows);
   } catch (error) {
     console.error('Error fetching patient vitals:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Delete Vital Record
+app.delete('/api/vitals/:id', async (req, res) => {
+  try {
+    const vitalId = req.params.id;
+    if (!vitalId) {
+      return res.status(400).json({ error: 'Vital ID is required' });
+    }
+
+    const [result] = await pool.query('DELETE FROM vitals WHERE vital_id = ?', [vitalId]);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Vital record not found' });
+    }
+
+    res.json({ message: 'Vital record deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting vital:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Delete All Vitals (with optional patient_id)
+app.delete('/api/vitals', async (req, res) => {
+  try {
+    const { patientId } = req.query;
+    let query = 'DELETE FROM vitals';
+    let params = [];
+
+    if (patientId) {
+      query += ' WHERE patient_id = ?';
+      params.push(patientId);
+    }
+
+    await pool.query(query, params);
+
+    res.json({ message: 'All vitals deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting all vitals:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -615,17 +742,9 @@ app.post('/api/vitals', async (req, res) => {
         io.emit('vital-update', completeVital);
         if (patientId) {
           io.to(`patient-${patientId}`).emit('vital-update', completeVital);
-          // Also generate and emit per-patient alerts based on thresholds
-          try {
-            const alerts = generateAlertsForVitals(completeVital);
-            if (alerts.length > 0) {
-              for (const alert of alerts) {
-                io.to(`patient-${patientId}`).emit('vital-alert', alert);
-              }
-            }
-          } catch (err) {
-            console.error('Error generating alerts:', err);
-          }
+
+          // Check for alerts and email doctor
+          checkAndAlert(completeVital, patientId).catch(err => console.error('Error in alert check:', err));
         }
       }
 
@@ -648,97 +767,6 @@ httpServer.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
 
-// Alert thresholds (mirror frontend values)
-const ALERT_RANGES = {
-  HR: { low: 60, high: 100, criticalLow: 50, criticalHigh: 120 },
-  Pulse: { low: 60, high: 100, criticalLow: 50, criticalHigh: 120 },
-  SpO2: { low: 90, high: 100, criticalLow: 85, criticalHigh: 100 },
-  ABP_Sys: { low: 90, high: 120, criticalLow: 70, criticalHigh: 180 },
-  PAP_Dia: { low: 4, high: 12, criticalLow: 2, criticalHigh: 20 },
-  EtCO2: { low: 35, high: 45, criticalLow: 25, criticalHigh: 55 },
-  awRR: { low: 12, high: 20, criticalLow: 8, criticalHigh: 25 }
-};
 
-// Helper to generate alerts for a single vitals object
-function generateAlertsForVitals(vital) {
-  const patientId = vital.patient_id;
-  const alerts = [];
 
-  const pushAlert = (vitalKey, value, type, severity) => {
-    alerts.push({
-      id: `${patientId}-${vitalKey}-${Date.now()}`,
-      patientId,
-      vital: vitalKey,
-      value,
-      type,
-      severity,
-      timestamp: new Date().toISOString()
-    });
-  };
 
-  // HR
-  if (vital.hr !== null && vital.hr !== undefined) {
-    if (vital.hr < ALERT_RANGES.HR.low || vital.hr > ALERT_RANGES.HR.high) {
-      const severity = (vital.hr < ALERT_RANGES.HR.criticalLow || vital.hr > ALERT_RANGES.HR.criticalHigh) ? 'critical' : 'warning';
-      const type = vital.hr < ALERT_RANGES.HR.low ? 'low' : 'high';
-      pushAlert('HR', vital.hr, type, severity);
-    }
-  }
-
-  // Pulse
-  if (vital.pulse !== null && vital.pulse !== undefined) {
-    if (vital.pulse < ALERT_RANGES.Pulse.low || vital.pulse > ALERT_RANGES.Pulse.high) {
-      const severity = (vital.pulse < ALERT_RANGES.Pulse.criticalLow || vital.pulse > ALERT_RANGES.Pulse.criticalHigh) ? 'critical' : 'warning';
-      const type = vital.pulse < ALERT_RANGES.Pulse.low ? 'low' : 'high';
-      pushAlert('Pulse', vital.pulse, type, severity);
-    }
-  }
-
-  // SpO2
-  if (vital.spo2 !== null && vital.spo2 !== undefined) {
-    if (vital.spo2 < ALERT_RANGES.SpO2.low) {
-      const severity = (vital.spo2 < ALERT_RANGES.SpO2.criticalLow) ? 'critical' : 'warning';
-      pushAlert('SpO2', vital.spo2, 'low', severity);
-    }
-  }
-
-  // ABP Sys (if available)
-  if (vital.abp) {
-    const abpSys = parseInt(String(vital.abp).split('/')[0]);
-    if (!isNaN(abpSys) && (abpSys < ALERT_RANGES.ABP_Sys.low || abpSys > ALERT_RANGES.ABP_Sys.high)) {
-      const severity = (abpSys < ALERT_RANGES.ABP_Sys.criticalLow || abpSys > ALERT_RANGES.ABP_Sys.criticalHigh) ? 'critical' : 'warning';
-      const type = abpSys < ALERT_RANGES.ABP_Sys.low ? 'low' : 'high';
-      pushAlert('ABP Sys', abpSys, type, severity);
-    }
-  }
-
-  // PAP Dia
-  if (vital.pap) {
-    const papDia = parseInt(String(vital.pap).split('/')[1]);
-    if (!isNaN(papDia) && (papDia < ALERT_RANGES.PAP_Dia.low || papDia > ALERT_RANGES.PAP_Dia.high)) {
-      const severity = (papDia < ALERT_RANGES.PAP_Dia.criticalLow || papDia > ALERT_RANGES.PAP_Dia.criticalHigh) ? 'critical' : 'warning';
-      const type = papDia < ALERT_RANGES.PAP_Dia.low ? 'low' : 'high';
-      pushAlert('PAP Dia', papDia, type, severity);
-    }
-  }
-
-  // EtCO2
-  if (vital.etco2 !== null && vital.etco2 !== undefined) {
-    if (vital.etco2 < ALERT_RANGES.EtCO2.low || vital.etco2 > ALERT_RANGES.EtCO2.high) {
-      const severity = (vital.etco2 < ALERT_RANGES.EtCO2.criticalLow || vital.etco2 > ALERT_RANGES.EtCO2.criticalHigh) ? 'critical' : 'warning';
-      const type = vital.etco2 < ALERT_RANGES.EtCO2.low ? 'low' : 'high';
-      pushAlert('EtCO2', vital.etco2, type, severity);
-    }
-  }
-
-  // awRR
-  if (vital.awrr !== null && vital.awrr !== undefined) {
-    if (vital.awrr < ALERT_RANGES.awRR.low || vital.awrr > ALERT_RANGES.awRR.high) {
-      const severity = (vital.awrr < ALERT_RANGES.awRR.criticalLow || vital.awrr > ALERT_RANGES.awRR.criticalHigh) ? 'critical' : 'warning';
-      const type = vital.awrr < ALERT_RANGES.awRR.low ? 'low' : 'high';
-      pushAlert('awRR', vital.awrr, type, severity);
-    }
-  }
-
-  return alerts;
-}

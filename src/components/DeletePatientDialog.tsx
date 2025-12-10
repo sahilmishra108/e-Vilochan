@@ -34,14 +34,14 @@ const DeletePatientDialog = ({ patientId, patientName, onPatientDeleted }: Delet
 
             if (response.ok) {
                 const data = await response.json();
-                toast.success('Patient Deleted', {
+                toast.success('Patient Discharged', {
                     description: data.message,
                 });
                 setOpen(false);
                 onPatientDeleted();
             } else {
                 const error = await response.json();
-                toast.error('Failed to delete patient', {
+                toast.error('Failed to discharge patient', {
                     description: error.message || 'Please try again.',
                 });
             }
@@ -63,18 +63,17 @@ const DeletePatientDialog = ({ patientId, patientName, onPatientDeleted }: Delet
                     size="sm"
                     className="gap-2"
                 >
-                    <Trash2 className="w-4 h-4" />
-                    Delete Patient
+                    Discharge Patient
                 </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
                 <AlertDialogHeader>
                     <AlertDialogTitle className="text-2xl font-bold text-red-600">
-                        Permanently Delete Patient?
+                        Discharge Patient?
                     </AlertDialogTitle>
                     <AlertDialogDescription className="space-y-3 pt-2">
                         <p className="text-base">
-                            You are about to permanently delete:
+                            You are about to discharge and remove record for:
                         </p>
                         <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                             <p className="font-bold text-lg text-red-900">{patientName}</p>
@@ -104,7 +103,7 @@ const DeletePatientDialog = ({ patientId, patientName, onPatientDeleted }: Delet
                         disabled={loading}
                         className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
                     >
-                        {loading ? 'Deleting...' : 'Yes, Delete Permanently'}
+                        {loading ? 'Discharging...' : 'Yes, Discharge'}
                     </AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>

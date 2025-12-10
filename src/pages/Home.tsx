@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Activity, Camera, FileVideo, ArrowRight, Stethoscope, Check, HeartPulse, ShieldCheck } from "lucide-react";
+import { Activity, Camera, FileVideo, ArrowRight, Stethoscope, Check, HeartPulse, ShieldCheck, Video } from "lucide-react";
 
 const Home = () => {
   return (
@@ -24,12 +24,15 @@ const Home = () => {
               className="h-10 w-auto transition-transform hover:scale-105 drop-shadow-sm"
             />
           </div>
-          <Link to="/patients" className="animate-slide-in-right group" style={{ animationDelay: '0.1s' }}>
-            <Button className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg hover:shadow-primary/25 transition-all hover:scale-105 rounded-full px-8 py-6 text-lg font-medium">
-              Patient Records
-              <ArrowRight className="ml-2 w-5 h-5 transition-transform group-hover:translate-x-1" />
-            </Button>
-          </Link>
+          <div className="flex items-center gap-4">
+
+            <Link to="/patients" className="animate-slide-in-right group" style={{ animationDelay: '0.1s' }}>
+              <Button className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg hover:shadow-primary/25 transition-all hover:scale-105 rounded-full px-8 py-6 text-lg font-medium">
+                Patient Records
+                <ArrowRight className="ml-2 w-5 h-5 transition-transform group-hover:translate-x-1" />
+              </Button>
+            </Link>
+          </div>
         </div>
       </header>
 
@@ -60,7 +63,7 @@ const Home = () => {
                   </div>
 
                   <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-white leading-tight tracking-tight">
-                    Divya-<span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary">Drishti</span>
+                    e-<span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary">Drishti</span>
                   </h1>
 
                   <p className="text-slate-300 text-lg md:text-xl leading-relaxed max-w-xl font-light">
@@ -79,8 +82,8 @@ const Home = () => {
                       </div>
                     </div>
                     <div className="flex items-start gap-4 group/item">
-                      
-                      
+
+
                     </div>
                   </div>
                 </div>
@@ -155,10 +158,10 @@ const Home = () => {
           <div className="flex flex-col md:flex-row justify-between items-center gap-6">
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-4">
-                
+
                 <div className="flex flex-col">
-                  <span className="font-bold text-xl tracking-tight text-blue-400">Divya Drishti</span>
-                  <span className="text-slate-400 text-xs">© 2025 All rights reserved</span>
+                  <span className="font-bold text-xl tracking-tight text-blue-400">e-Drishti</span>
+
                 </div>
               </div>
             </div>

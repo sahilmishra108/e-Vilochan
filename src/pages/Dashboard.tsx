@@ -2,7 +2,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Dashboard from "@/components/Dashboard";
 import CameraFeed from "@/components/CameraFeed";
 import VideoProcessor from "@/components/VideoProcessor";
-import NotificationBell from "@/components/NotificationBell";
+
 import { Activity, Camera, FileVideo } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -45,7 +45,7 @@ const DashboardPage = () => {
 
       {/* Top-right notification bell and home */}
       <div className="absolute top-6 right-6 z-20 flex items-center gap-4 animate-slide-in-right">
-        <NotificationBell patientId={searchParams.get("patientId")} />
+
         <Link to="/">
           <Button variant="outline" size="sm" className="bg-white/50 backdrop-blur-sm border-slate-200 hover:bg-white hover:border-primary/50 transition-all hover:scale-105 shadow-sm rounded-full px-4">
             <Home className="w-4 h-4 mr-2 text-primary" />

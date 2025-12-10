@@ -59,103 +59,25 @@ CREATE TABLE vitals (
     INDEX idx_created_at (created_at)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = 'Patient vital signs monitoring data';
 
--- Seed Data/Dummy Data
-INSERT INTO
-    patients (
-        patient_name,
-        age,
-        gender,
-        diagnosis,
-        admission_date
-    )
-VALUES (
-        'John Doe',
-        45,
-        'Male',
-        'Hypertension',
-        '2023-10-01'
-    ),
-    (
-        'Jane Smith',
-        32,
-        'Female',
-        'Pneumonia',
-        '2023-10-02'
-    ),
-    (
-        'Michael Johnson',
-        58,
-        'Male',
-        'Diabetes Type 2',
-        '2023-10-03'
-    ),
-    (
-        'Emily Davis',
-        24,
-        'Female',
-        'Asthma',
-        '2023-10-04'
-    ),
-    (
-        'Robert Brown',
-        67,
-        'Male',
-        'Heart Failure',
-        '2023-10-05'
-    ),
-    (
-        'Linda Wilson',
-        51,
-        'Female',
-        'COPD',
-        '2023-10-06'
-    ),
-    (
-        'William Taylor',
-        72,
-        'Male',
-        'Stroke Recovery',
-        '2023-10-07'
-    ),
-    (
-        'Sarah Moore',
-        29,
-        'Female',
-        'Post-Surgery',
-        '2023-10-08'
-    ),
-    (
-        'David Anderson',
-        40,
-        'Male',
-        'COVID-19',
-        '2023-10-09'
-    ),
-    (
-        'Jennifer Thomas',
-        35,
-        'Female',
-        'Sepsis',
-        '2023-10-10'
-    ),
-    (
-        'James Jackson',
-        60,
-        'Male',
-        'Cardiac Arrest',
-        '2023-10-11'
-    );
-
 INSERT INTO
     beds (patient_id)
-VALUES (1),
-    (2),
-    (3),
-    (4),
-    (5),
-    (6),
-    (7),
-    (8),
-    (9),
-    (10),
-    (11);
+VALUES (NULL),
+    (NULL),
+    (NULL),
+    (NULL),
+    (NULL),
+    (NULL),
+    (NULL),
+    (NULL),
+    (NULL),
+    (NULL),
+    (NULL),
+    (NULL),
+    (NULL),
+    (NULL),
+    (NULL),
+    (NULL),
+    (NULL),
+    (NULL),
+    (NULL),
+    (NULL);

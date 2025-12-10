@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "predev": ".\\kill-port-3000.bat",
-    "dev": "concurrently -n \"FE,BE\" -c \"cyan,magenta\" \"npm run dev:frontend\" \"npm run dev:backend\" 2>&1 | node logger.js",
+    "dev": "concurrently -n \"FE,BE\" -c \"cyan,magenta\" \"npm run dev:frontend\" \"npm run dev:backend\"",
+    "dev:logged": "concurrently -n \"FE,BE\" -c \"cyan,magenta\" \"npm run dev:frontend\" \"npm run dev:backend\" 2>&1 | node logger.js",
     "dev:frontend": "vite",
     "dev:backend": "cd server && npm run dev",
     "build": "vite build",

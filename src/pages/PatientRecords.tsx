@@ -7,6 +7,7 @@ import { User, Activity, ArrowRight, Search, Calendar, FileText, HeartPulse } fr
 import AddPatientDialog from "@/components/AddPatientDialog";
 import DeletePatientDialog from "@/components/DeletePatientDialog";
 
+
 interface Patient {
     patient_id: number;
     patient_name: string;
@@ -158,8 +159,7 @@ const PatientRecords = () => {
                                         <div className="pt-2 flex gap-3">
                                             <Link to={`/dashboard?patientId=${patient.patient_id}`} className="flex-1">
                                                 <Button className="w-full bg-white border border-primary/20 text-primary hover:bg-primary hover:text-primary-foreground font-semibold transition-all shadow-sm hover:shadow-md rounded-xl">
-                                                    Monitor
-                                                    <HeartPulse className="w-4 h-4 ml-2" />
+                                                    Patient Dashboard
                                                 </Button>
                                             </Link>
                                             <DeletePatientDialog

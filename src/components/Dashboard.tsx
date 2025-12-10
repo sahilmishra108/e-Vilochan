@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Card } from '@/components/ui/card';
-import { Filter, Download, RefreshCw, Activity } from 'lucide-react';
+import { Filter, Download, RefreshCw, Activity, Trash2 } from 'lucide-react';
 import { io } from 'socket.io-client';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import PatientVitalMonitor from './PatientVitalMonitor';
-import VitalNotifications from './VitalNotifications';
+
 import ConnectWithPatient from './ConnectWithPatient';
 import {
   Table,
@@ -18,7 +17,7 @@ import {
 } from '@/components/ui/table';
 
 interface VitalRecord {
-  id?: string;
+  vital_id?: number;
   created_at: string;
   hr: number | null;
   pulse: number | null;
@@ -38,6 +37,7 @@ interface Patient {
   gender: string;
   diagnosis: string;
   admission_date: string;
+  bed_id: number | null;
 }
 
 interface DashboardProps {
@@ -137,6 +137,29 @@ const Dashboard = ({ patientId }: DashboardProps) => {
     setFilteredVitals(filtered);
     calculateAverages(filtered);
   };
+  const clearAllVitals = async () => {
+    if (!confirm('Are you sure you want to clear ALL vital history? This cannot be undone.')) return;
+
+    try {
+      const url = patientId
+        ? `http://localhost:3000/api/vitals?patientId=${patientId}`
+        : 'http://localhost:3000/api/vitals';
+
+      const response = await fetch(url, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        setVitalsHistory([]);
+        setFilteredVitals([]);
+      } else {
+        console.error('Failed to clear vitals');
+        alert('Failed to clear vitals');
+      }
+    } catch (error) {
+      console.error('Error clearing vitals:', error);
+    }
+  };
 
   const clearFilters = () => {
     setDateFrom('');
@@ -180,7 +203,6 @@ const Dashboard = ({ patientId }: DashboardProps) => {
     const headers = ['Timestamp', 'Source', 'HR (bpm)', 'Pulse (bpm)', 'SpO2 (%)', 'ABP (mmHg)', 'PAP (mmHg)', 'EtCO2 (mmHg)', 'awRR (/min)'];
     const rows = (filteredVitals.length > 0 ? filteredVitals : vitalsHistory)
       .slice()
-      .reverse()
       .map(record => [
         new Date(record.created_at).toLocaleString(),
         record.source || 'N/A',
@@ -223,17 +245,7 @@ const Dashboard = ({ patientId }: DashboardProps) => {
 
   return (
     <div className="space-y-8 animate-fade-in">
-      {/* Patient Vital Monitor - Hidden component that monitors vitals and shows notifications */}
-      <PatientVitalMonitor
-        vitals={vitalsHistory}
-        patient={patient}
-      />
 
-      {/* Vital Notifications Display */}
-      <VitalNotifications
-        vitals={vitalsHistory}
-        patient={patient}
-      />
 
       {/* Connect with Patient Button */}
       {patient && (
@@ -263,6 +275,12 @@ const Dashboard = ({ patientId }: DashboardProps) => {
               {patient ? (
                 <>
                   <span className="font-semibold text-white">{patient.diagnosis}</span>
+                  {patient.bed_id && (
+                    <>
+                      <span className="mx-2">•</span>
+                      <span className="font-semibold text-white">Bed {patient.bed_id}</span>
+                    </>
+                  )}
                   <span className="mx-2">•</span>
                   Admitted {new Date(patient.admission_date).toLocaleDateString()}
                 </>
@@ -427,6 +445,15 @@ const Dashboard = ({ patientId }: DashboardProps) => {
               <Download className="w-4 h-4" />
               Export CSV
             </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={clearAllVitals}
+              className="gap-2 rounded-full shadow-red-500/20"
+            >
+              <Trash2 className="w-4 h-4" />
+              Clear History
+            </Button>
           </div>
         </div>
 
@@ -449,11 +476,10 @@ const Dashboard = ({ patientId }: DashboardProps) => {
               <TableBody>
                 {(filteredVitals.length > 0 ? filteredVitals : vitalsHistory)
                   .slice()
-                  .reverse()
                   .slice(0, 100)
                   .map((record, index) => (
                     <TableRow
-                      key={record.id || index}
+                      key={record.vital_id || index}
                       className="hover:bg-white/50 transition-colors border-b border-white/10"
                     >
                       <TableCell className="font-medium text-foreground/80">
