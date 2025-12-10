@@ -1,4 +1,4 @@
-# Divya-Drishti
+# e-Drishti
 
 A comprehensive telemedicine platform for real-time patient vital signs monitoring using advanced OCR technology and AI-powered analysis.
 
