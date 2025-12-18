@@ -375,7 +375,7 @@ const CameraFeed = ({ patientId }: CameraFeedProps) => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="w-full">
           <div className="relative bg-slate-950 rounded-2xl overflow-hidden border-4 border-slate-800 shadow-2xl">
             <div className="absolute top-4 left-4 z-10 flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
@@ -411,23 +411,6 @@ const CameraFeed = ({ patientId }: CameraFeedProps) => {
               </div>
             )}
           </div>
-
-          <div className="bg-slate-950 rounded-2xl p-1 border-4 border-slate-800 shadow-2xl flex flex-col">
-            <div className="bg-slate-900/50 p-3 border-b border-slate-800 flex justify-between items-center">
-              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Last Processed Frame</h3>
-              <span className="text-[10px] text-slate-500 font-mono">{new Date().toLocaleTimeString()}</span>
-            </div>
-            <div className="flex-1 flex items-center justify-center bg-slate-900/30 p-4">
-              {previewUrl ? (
-                <img src={previewUrl} alt="Last frame" className="w-full h-auto rounded-lg border border-slate-700/50 shadow-lg" />
-              ) : (
-                <div className="flex flex-col items-center gap-3 text-slate-600">
-                  <Camera className="w-12 h-12 opacity-20" />
-                  <p className="text-sm font-medium">No frame captured yet</p>
-                </div>
-              )}
-            </div>
-          </div>
         </div>
 
         <div className="mt-4 text-sm text-muted-foreground">
@@ -456,7 +439,7 @@ const CameraFeed = ({ patientId }: CameraFeedProps) => {
             Live Vitals Analysis
           </h3>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 gap-4">
             <VitalCard
               label="HR"
               value={latestVitals?.HR ?? null}

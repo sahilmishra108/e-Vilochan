@@ -11,22 +11,22 @@ interface VitalCardProps {
 const VitalCard = ({ label, value, unit, trend = 'stable' }: VitalCardProps) => {
   const getValueColor = () => {
     if (value === null || value === 'N/A') return 'text-muted-foreground';
-    
+
     // Define normal ranges for different vitals
     const numValue = typeof value === 'string' ? parseInt(value.split('/')[0]) : value;
-    
+
     if (label === 'HR' || label === 'Pulse') {
       if (numValue < 60 || numValue > 100) return 'text-alert';
       if (numValue < 70 || numValue > 90) return 'text-[hsl(var(--vital-warning))]';
       return 'text-[hsl(var(--vital-success))]';
     }
-    
+
     if (label === 'SpO2') {
       if (numValue < 90) return 'text-alert';
       if (numValue < 95) return 'text-[hsl(var(--vital-warning))]';
       return 'text-[hsl(var(--vital-success))]';
     }
-    
+
     return 'text-foreground';
   };
 
@@ -40,19 +40,19 @@ const VitalCard = ({ label, value, unit, trend = 'stable' }: VitalCardProps) => 
           </h3>
         </div>
       </div>
-      
+
       <div className="flex items-baseline gap-2">
-        <span className={`text-4xl font-bold tabular-nums ${getValueColor()}`}>
+        <span className={`text-3xl font-bold tabular-nums ${getValueColor()}`}>
           {value ?? 'N/A'}
         </span>
-        <span className="text-lg text-muted-foreground font-medium">
+        <span className="text-sm text-muted-foreground font-medium self-end mb-1">
           {unit}
         </span>
       </div>
-      
+
       <div className="mt-3 flex items-center gap-2">
         <div className="h-1 flex-1 bg-muted rounded-full overflow-hidden">
-          <div 
+          <div
             className={`h-full ${getValueColor().replace('text-', 'bg-')} transition-all duration-300`}
             style={{ width: value ? '75%' : '0%' }}
           />

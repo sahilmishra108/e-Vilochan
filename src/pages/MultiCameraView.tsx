@@ -250,6 +250,11 @@ const MultiCameraView = () => {
                                                     <span className="font-semibold text-sm">
                                                         Patient: {patients.find(p => p.patient_id.toString() === monitor.patientId)?.patient_name}
                                                     </span>
+                                                    <Link to={`/dashboard?patientId=${monitor.patientId}&tab=dashboard`} target="_blank">
+                                                        <Button size="sm" variant="outline" className="h-6 px-2 text-[10px] flex items-center gap-1 ml-2 bg-white/80 hover:bg-white text-primary border-primary/20">
+                                                            <Activity className="w-3 h-3" /> View Data
+                                                        </Button>
+                                                    </Link>
                                                 </div>
                                                 <span className="text-xs text-muted-foreground uppercase font-mono">
                                                     {icus.find(i => i.icu_id.toString() === monitor.icuId)?.icu_name}
