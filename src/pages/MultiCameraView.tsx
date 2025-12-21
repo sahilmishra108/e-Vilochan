@@ -3,13 +3,17 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Home, Camera, Plus, X, Monitor, ChevronRight, Activity } from "lucide-react";
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+    DialogFooter,
+    DialogDescription,
+} from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { Card } from "@/components/ui/card";
 import CameraFeed from "@/components/CameraFeed";
 
 interface ICU {
@@ -27,7 +31,7 @@ interface MonitorSlot {
     id: number;
     icuId: string | null;
     patientId: string | null;
-    status: 'selecting' | 'active';
+    status: 'active';
 }
 
 const MultiCameraView = () => {
@@ -35,6 +39,10 @@ const MultiCameraView = () => {
     const [icus, setIcus] = useState<ICU[]>([]);
     const [patients, setPatients] = useState<Patient[]>([]);
     const [loading, setLoading] = useState(true);
+
+    // Dialog State
+    const [isSelectionOpen, setIsSelectionOpen] = useState(false);
+    const [selectedPatients, setSelectedPatients] = useState<string[]>([]);
 
     // Fetch initial data
     useEffect(() => {
@@ -50,6 +58,27 @@ const MultiCameraView = () => {
 
                 setIcus(icusData);
                 setPatients(patientsData);
+
+                // Auto-add patient if URL param exists
+                const searchParams = new URLSearchParams(window.location.search);
+                const autoPatientId = searchParams.get('autoPatient');
+
+                if (autoPatientId && patientsData.length > 0) {
+                    const patient = patientsData.find((p: any) => p.patient_id.toString() === autoPatientId);
+                    if (patient) {
+                        setMonitors(prev => {
+                            if (prev.some(m => m.patientId === autoPatientId)) return prev;
+                            return [...prev, {
+                                id: Date.now(),
+                                icuId: patient.icu_id?.toString() || null,
+                                patientId: autoPatientId,
+                                status: 'active'
+                            }];
+                        });
+                        window.history.replaceState({}, '', '/multicamera');
+                    }
+                }
+
                 setLoading(false);
             } catch (error) {
                 console.error("Error fetching data:", error);
@@ -60,43 +89,41 @@ const MultiCameraView = () => {
         fetchData();
     }, []);
 
-    const addMonitorSlot = () => {
-        const newId = Date.now();
-        setMonitors(prev => [...prev, {
-            id: newId,
-            icuId: null,
-            patientId: null,
-            status: 'selecting'
-        }]);
-    };
-
     const removeMonitor = (id: number) => {
         setMonitors(prev => prev.filter(m => m.id !== id));
     };
 
-    const updateMonitorSelection = (id: number, field: 'icuId' | 'patientId', value: string) => {
-        setMonitors(prev => prev.map(m => {
-            if (m.id === id) {
-                // If changing ICU, reset patient
-                if (field === 'icuId') {
-                    return { ...m, icuId: value, patientId: null };
-                }
-                return { ...m, [field]: value };
-            }
-            return m;
-        }));
+    const handlePatientToggle = (patientId: string) => {
+        setSelectedPatients(prev =>
+            prev.includes(patientId)
+                ? prev.filter(id => id !== patientId)
+                : [...prev, patientId]
+        );
     };
 
-    const startMonitoring = (id: number) => {
-        setMonitors(prev => prev.map(m =>
-            m.id === id ? { ...m, status: 'active' } : m
-        ));
+    const handleAddSelectedMonitors = () => {
+        const newMonitors: MonitorSlot[] = selectedPatients.map(patientId => {
+            const patient = patients.find(p => p.patient_id.toString() === patientId);
+            return {
+                id: Date.now() + Math.random(), // Ensure unique ID
+                icuId: patient?.icu_id?.toString() || null,
+                patientId: patientId,
+                status: 'active'
+            };
+        });
+
+        // Filter out patients that are already monitored to avoid duplicates
+        const uniqueNewMonitors = newMonitors.filter(nm =>
+            !monitors.some(m => m.patientId === nm.patientId)
+        );
+
+        setMonitors(prev => [...prev, ...uniqueNewMonitors]);
+        setIsSelectionOpen(false);
+        setSelectedPatients([]);
     };
 
-    const getFilteredPatients = (icuId: string | null) => {
-        if (!icuId) return [];
-        return patients.filter(p => p.icu_id?.toString() === icuId);
-    };
+    // Filter patients who are not yet monitored for the list
+    const availablePatients = patients.filter(p => !monitors.some(m => m.patientId === p.patient_id.toString()));
 
     return (
         <div className="min-h-screen bg-background overflow-hidden font-sans selection:bg-primary/20 selection:text-primary">
@@ -124,9 +151,8 @@ const MultiCameraView = () => {
                 </div>
 
                 <div className="flex items-center gap-4">
-                    <Button onClick={addMonitorSlot} className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg hover:shadow-primary/25 transition-all">
-                        <Plus className="w-4 h-4 mr-2" />
-                        Add Monitor
+                    <Button onClick={() => setIsSelectionOpen(true)} className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg hover:shadow-primary/25 transition-all">
+                        Show Monitors
                     </Button>
                     <Link to="/">
                         <Button variant="outline" size="sm" className="bg-white/50 backdrop-blur-sm hover:bg-white transition-all">
@@ -146,129 +172,111 @@ const MultiCameraView = () => {
                         </div>
                         <h2 className="text-2xl font-bold text-slate-700">No Active Monitors</h2>
                         <p className="text-slate-500 max-w-md">
-                            Start by adding a monitor slot to select a patient for real-time Tele-ICU vitals tracking.
+                            Select patients from the list to start real-time Tele-ICU vitals tracking.
                         </p>
-                        <Button onClick={addMonitorSlot} size="lg" className="bg-primary hover:bg-primary/90 shadow-xl hover:shadow-primary/25 transition-all hover:scale-105">
-                            <Plus className="w-5 h-5 mr-2" />
-                            Add First Monitor
+                        <Button onClick={() => setIsSelectionOpen(true)} size="lg" className="bg-primary hover:bg-primary/90 shadow-xl hover:shadow-primary/25 transition-all hover:scale-105">
+                            Show Monitors
                         </Button>
                     </div>
                 ) : (
                     <div className={`grid grid-cols-1 ${monitors.length > 1 ? 'lg:grid-cols-2' : ''} xl:grid-cols-2 2xl:grid-cols-3 gap-6 animate-fade-in-up`}>
                         {monitors.map((monitor, index) => (
                             <div key={monitor.id} className="relative group animate-scale-in" style={{ animationDelay: `${index * 0.1}s` }}>
-
-                                {monitor.status === 'selecting' ? (
-                                    // Selection State
-                                    <Card className="h-full min-h-[400px] border-dashed border-2 border-slate-300 bg-slate-50/50 flex flex-col items-center justify-center p-8 relative overflow-hidden">
+                                {/* Active Monitoring State */}
+                                <div className="relative bg-background rounded-xl border shadow-lg overflow-hidden">
+                                    <div className="absolute top-2 right-2 z-20 flex gap-2">
                                         <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="absolute top-2 right-2 hover:bg-red-50 hover:text-red-500 rounded-full"
+                                            variant="destructive"
+                                            size="sm"
+                                            className="h-8 px-2 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
                                             onClick={() => removeMonitor(monitor.id)}
                                         >
-                                            <X className="w-4 h-4" />
+                                            <X className="w-4 h-4 mr-1" /> Remove
                                         </Button>
-
-                                        <div className="w-full max-w-xs space-y-6 relative z-10">
-                                            <div className="text-center space-y-2 mb-8">
-                                                <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mx-auto text-primary mb-3">
-                                                    <Activity className="w-6 h-6" />
-                                                </div>
-                                                <h3 className="text-lg font-semibold">Configure Monitor</h3>
-                                                <p className="text-sm text-muted-foreground">Select ICU and Patient to start</p>
-                                            </div>
-
-                                            <div className="space-y-4">
-                                                <div className="space-y-2">
-                                                    <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">Step 1: Select ICU</label>
-                                                    <Select
-                                                        value={monitor.icuId || ""}
-                                                        onValueChange={(val) => updateMonitorSelection(monitor.id, 'icuId', val)}
-                                                    >
-                                                        <SelectTrigger className="w-full bg-white">
-                                                            <SelectValue placeholder="Select ICU Unit" />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            {icus.map(icu => (
-                                                                <SelectItem key={icu.icu_id} value={icu.icu_id.toString()}>
-                                                                    {icu.icu_name}
-                                                                </SelectItem>
-                                                            ))}
-                                                        </SelectContent>
-                                                    </Select>
-                                                </div>
-
-                                                <div className="space-y-2">
-                                                    <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">Step 2: Select Patient</label>
-                                                    <Select
-                                                        value={monitor.patientId || ""}
-                                                        onValueChange={(val) => updateMonitorSelection(monitor.id, 'patientId', val)}
-                                                        disabled={!monitor.icuId}
-                                                    >
-                                                        <SelectTrigger className="w-full bg-white">
-                                                            <SelectValue placeholder="Select Patient" />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            {getFilteredPatients(monitor.icuId).map(patient => (
-                                                                <SelectItem key={patient.patient_id} value={patient.patient_id.toString()}>
-                                                                    {patient.patient_name} (ID: #{patient.patient_id})
-                                                                </SelectItem>
-                                                            ))}
-                                                        </SelectContent>
-                                                    </Select>
-                                                </div>
-
-                                                <Button
-                                                    className="w-full mt-4"
-                                                    disabled={!monitor.patientId}
-                                                    onClick={() => startMonitoring(monitor.id)}
-                                                >
-                                                    Start Live Feed
-                                                    <ChevronRight className="w-4 h-4 ml-2" />
-                                                </Button>
-                                            </div>
-                                        </div>
-                                    </Card>
-                                ) : (
-                                    // Active Monitoring State
-                                    <div className="relative bg-background rounded-xl border shadow-lg overflow-hidden">
-                                        <div className="absolute top-2 right-2 z-20 flex gap-2">
-                                            <Button
-                                                variant="destructive"
-                                                size="sm"
-                                                className="h-8 px-2 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
-                                                onClick={() => removeMonitor(monitor.id)}
-                                            >
-                                                <X className="w-4 h-4 mr-1" /> Remove
-                                            </Button>
-                                        </div>
-                                        <div className="p-1">
-                                            <div className="bg-slate-900/5 px-4 py-2 border-b flex justify-between items-center mb-1">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-                                                    <span className="font-semibold text-sm">
-                                                        Patient: {patients.find(p => p.patient_id.toString() === monitor.patientId)?.patient_name}
-                                                    </span>
-                                                    <Link to={`/dashboard?patientId=${monitor.patientId}&tab=dashboard`} target="_blank">
-                                                        <Button size="sm" variant="outline" className="h-6 px-2 text-[10px] flex items-center gap-1 ml-2 bg-white/80 hover:bg-white text-primary border-primary/20">
-                                                            <Activity className="w-3 h-3" /> View Data
-                                                        </Button>
-                                                    </Link>
-                                                </div>
-                                                <span className="text-xs text-muted-foreground uppercase font-mono">
-                                                    {icus.find(i => i.icu_id.toString() === monitor.icuId)?.icu_name}
-                                                </span>
-                                            </div>
-                                            <CameraFeed patientId={monitor.patientId} />
-                                        </div>
                                     </div>
-                                )}
+                                    <div className="p-1">
+                                        <div className="bg-slate-900/5 px-4 py-2 border-b flex justify-between items-center mb-1">
+                                            <div className="flex items-center gap-2">
+                                                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                                                <span className="font-semibold text-sm">
+                                                    Patient: {patients.find(p => p.patient_id.toString() === monitor.patientId)?.patient_name}
+                                                </span>
+                                                <Link to={`/dashboard?patientId=${monitor.patientId}&tab=dashboard`} target="_blank">
+                                                    <Button size="sm" variant="outline" className="h-6 px-2 text-[10px] flex items-center gap-1 ml-2 bg-white/80 hover:bg-white text-primary border-primary/20">
+                                                        <Activity className="w-3 h-3" /> View Data
+                                                    </Button>
+                                                </Link>
+                                            </div>
+                                            <span className="text-xs text-muted-foreground uppercase font-mono">
+                                                {icus.find(i => i.icu_id.toString() === monitor.icuId)?.icu_name}
+                                            </span>
+                                        </div>
+                                        <CameraFeed patientId={monitor.patientId} />
+                                    </div>
+                                </div>
                             </div>
                         ))}
                     </div>
                 )}
             </div>
+
+            {/* Monitor Selection Dialog */}
+            <Dialog open={isSelectionOpen} onOpenChange={setIsSelectionOpen}>
+                <DialogContent className="sm:max-w-[500px] bg-white/95 backdrop-blur-xl border-white/20 shadow-2xl">
+                    <DialogHeader>
+                        <DialogTitle className="text-2xl font-bold text-slate-800">Select Patients to Monitor</DialogTitle>
+                        <DialogDescription>
+                            Choose one or more patients from the list below to add to your monitoring view.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="max-h-[300px] overflow-y-auto space-y-2 py-4 pr-2">
+                        {availablePatients.length === 0 ? (
+                            <div className="text-center py-8 text-muted-foreground">
+                                <p>No patients available to add.</p>
+                                <p className="text-xs mt-1">All patients are currently being monitored or none exist.</p>
+                            </div>
+                        ) : (
+                            availablePatients.map(patient => (
+                                <div key={patient.patient_id} className="flex items-center space-x-3 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors">
+                                    <Checkbox
+                                        id={`patient-${patient.patient_id}`}
+                                        checked={selectedPatients.includes(patient.patient_id.toString())}
+                                        onCheckedChange={() => handlePatientToggle(patient.patient_id.toString())}
+                                    />
+                                    <div className="flex-1">
+                                        <Label
+                                            htmlFor={`patient-${patient.patient_id}`}
+                                            className="text-sm font-medium leading-none cursor-pointer block"
+                                        >
+                                            {patient.patient_name}
+                                            <span className="ml-2 text-xs font-normal text-muted-foreground">
+                                                (ID: {patient.patient_id})
+                                            </span>
+                                        </Label>
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                            {icus.find(i => i.icu_id === patient.icu_id)?.icu_name || 'No ICU Assigned'}
+                                        </p>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsSelectionOpen(false)}>
+                            Cancel
+                        </Button>
+                        <Button
+                            onClick={handleAddSelectedMonitors}
+                            disabled={selectedPatients.length === 0}
+                            className="bg-primary hover:bg-primary/90"
+                        >
+                            Start Monitoring ({selectedPatients.length})
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 };

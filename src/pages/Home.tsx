@@ -1,7 +1,15 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Activity, Camera, FileVideo, ArrowRight, Stethoscope, Check, HeartPulse, ShieldCheck, Video } from "lucide-react";
+import { Activity, Camera, FileVideo, ArrowRight, Stethoscope, Check, HeartPulse, ShieldCheck, Video, Menu } from "lucide-react";
+import QuickAdmitDialog from "@/components/QuickAdmitDialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const Home = () => {
   return (
@@ -25,19 +33,37 @@ const Home = () => {
             />
           </div>
           <div className="flex items-center gap-4">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full hover:bg-primary/10 text-slate-700 hover:text-primary transition-colors">
+                  <Menu className="h-6 w-6" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56 bg-white/95 backdrop-blur-xl border-white/20 shadow-xl rounded-xl p-2">
 
-            <Link to="/multicamera" className="animate-slide-in-right group" style={{ animationDelay: '0.1s' }}>
-              <Button variant="outline" className="border-primary/20 hover:bg-primary/5 text-primary hover:text-primary shadow-sm transition-all hover:scale-105 rounded-full px-6 py-2 text-sm font-medium">
-                Multi Camera View
-                <Camera className="ml-2 w-4 h-4 transition-transform group-hover:scale-110" />
-              </Button>
-            </Link>
-            <Link to="/patients" className="animate-slide-in-right group" style={{ animationDelay: '0.2s' }}>
-              <Button className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg hover:shadow-primary/25 transition-all hover:scale-105 rounded-full px-6 py-2 text-sm font-medium">
-                Patient Records
-                <ArrowRight className="ml-2 w-4 h-4 transition-transform group-hover:translate-x-1" />
-              </Button>
-            </Link>
+
+                <Link to="/multicamera">
+                  <DropdownMenuItem className="cursor-pointer rounded-lg p-2.5 hover:bg-primary/5 focus:bg-primary/5 focus:text-primary transition-colors">
+                    <Camera className="w-4 h-4 mr-2" />
+                    <span className="font-medium">Multi Camera View</span>
+                  </DropdownMenuItem>
+                </Link>
+
+                <QuickAdmitDialog trigger={
+                  <div role="menuitem" className="flex select-none items-center rounded-lg p-2.5 text-sm outline-none cursor-pointer hover:bg-primary/5 focus:bg-primary/5 focus:text-primary transition-colors text-slate-900 data-[disabled]:pointer-events-none data-[disabled]:opacity-50">
+                    <Activity className="w-4 h-4 mr-2" />
+                    <span className="font-medium">Quick Admit & Monitor</span>
+                  </div>
+                } />
+
+                <Link to="/patients">
+                  <DropdownMenuItem className="cursor-pointer rounded-lg p-2.5 hover:bg-primary/5 focus:bg-primary/5 focus:text-primary transition-colors">
+                    <ArrowRight className="w-4 h-4 mr-2" />
+                    <span className="font-medium">Patient Records</span>
+                  </DropdownMenuItem>
+                </Link>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </header>
@@ -70,7 +96,7 @@ const Home = () => {
 
                   <div className="flex items-center gap-4">
                     <img
-                      src="/e-Drishti (2).svg"
+                      src="/eye logo.png"
                       alt="e-Drishti Logo"
                       className="h-16 md:h-20 lg:h-24 w-auto drop-shadow-2xl"
                     />
@@ -152,15 +178,7 @@ const Home = () => {
             ))}
           </div>
 
-          {/* Call to Action */}
-          <div className="flex justify-center">
-            <Link to="/patients" className="w-full max-w-2xl">
-              <div className="relative group cursor-pointer">
-                <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 to-teal-600 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
-
-              </div>
-            </Link>
-          </div>
+          {/* Call to Action - Removed */}
 
         </div>
       </div>
