@@ -49,7 +49,7 @@ const io = new Server(httpServer, {
   maxHttpBufferSize: 1e7 // 10MB limit
 });
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 4000;
 const JWT_SECRET = process.env.JWT_SECRET || 'vitals-view-super-secret-key';
 
 // Middleware
@@ -1953,11 +1953,9 @@ app.get('/api/test/alert/:patientId', authenticateToken, async (req, res) => {
 // Export app for Vercel
 export default app;
 
-if (process.env.NODE_ENV !== 'production') {
-  httpServer.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-  });
-}
+httpServer.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
 
 // Delete ICU
 app.delete('/api/icus/:id', authenticateToken, async (req, res) => {
