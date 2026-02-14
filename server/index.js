@@ -95,6 +95,8 @@ const emailTransporter = nodemailer.createTransport({
 
 const DOCTOR_EMAIL = process.env.DOCTOR_EMAIL || 'doctor@example.com';
 
+// Web Push Setup
+
 // Alert Thresholds & Rate Limiting
 const ALERT_RANGES = {
   HR: { low: 60, high: 100 },
@@ -192,9 +194,10 @@ async function checkAndAlert(vital, patientId) {
 
       // 2. Fetch Assigned Doctor specifically
       if (p.assigned_doctor_id) {
-        const [docRows] = await pool.query('SELECT name, email, role FROM doctors WHERE doctor_id = ?', [p.assigned_doctor_id]);
+        const [docRows] = await pool.query('SELECT doctor_id, name, email, role FROM doctors WHERE doctor_id = ?', [p.assigned_doctor_id]);
         if (docRows.length > 0) {
           recipientsMap.set(docRows[0].email, {
+            doctor_id: docRows[0].doctor_id,
             name: docRows[0].name,
             email: docRows[0].email,
             role: docRows[0].role
@@ -204,18 +207,18 @@ async function checkAndAlert(vital, patientId) {
 
       // 3. Fetch all Doctors and Admins assigned to this ICU
       if (icuId) {
-        const [clinicalRows] = await pool.query('SELECT name, email, role FROM doctors WHERE assigned_icu_id = ? AND role IN ("doctor", "admin")', [icuId]);
+        const [clinicalRows] = await pool.query('SELECT doctor_id, name, email, role FROM doctors WHERE assigned_icu_id = ? AND role IN ("doctor", "admin")', [icuId]);
         clinicalRows.forEach(r => {
           if (!recipientsMap.has(r.email)) {
-            recipientsMap.set(r.email, { name: r.name, email: r.email, role: r.role });
+            recipientsMap.set(r.email, { doctor_id: r.doctor_id, name: r.name, email: r.email, role: r.role });
           }
         });
 
         // 4. Fetch Staff correlated with this ICU
-        const [staffRows] = await pool.query('SELECT name, email, role FROM doctors WHERE assigned_icu_id = ? AND role = "staff"', [icuId]);
+        const [staffRows] = await pool.query('SELECT doctor_id, name, email, role FROM doctors WHERE assigned_icu_id = ? AND role = "staff"', [icuId]);
         staffRows.forEach(s => {
           if (!recipientsMap.has(s.email)) {
-            recipientsMap.set(s.email, { name: s.name, email: s.email, role: s.role });
+            recipientsMap.set(s.email, { doctor_id: s.doctor_id, name: s.name, email: s.email, role: s.role });
           }
         });
       }
@@ -223,10 +226,10 @@ async function checkAndAlert(vital, patientId) {
       // 5. Fallback: If no clinical recipients found, fetch hospital admin
       const hasClinical = Array.from(recipientsMap.values()).some(r => r.role === 'doctor' || r.role === 'admin');
       if (!hasClinical && hospitalId) {
-        const [adminRows] = await pool.query('SELECT name, email, role FROM doctors WHERE hospital_id = ? AND role = "admin"', [hospitalId]);
+        const [adminRows] = await pool.query('SELECT doctor_id, name, email, role FROM doctors WHERE hospital_id = ? AND role = "admin"', [hospitalId]);
         adminRows.forEach(a => {
           if (!recipientsMap.has(a.email)) {
-            recipientsMap.set(a.email, { name: a.name, email: a.email, role: a.role });
+            recipientsMap.set(a.email, { doctor_id: a.doctor_id, name: a.name, email: a.email, role: a.role });
           }
         });
       }
@@ -235,6 +238,7 @@ async function checkAndAlert(vital, patientId) {
     // Absolute fallback to default env email if still empty
     if (recipientsMap.size === 0) {
       recipientsMap.set(DOCTOR_EMAIL, {
+        doctor_id: null,
         name: 'On-duty Clinician',
         email: DOCTOR_EMAIL,
         role: 'doctor'
@@ -274,9 +278,14 @@ async function checkAndAlert(vital, patientId) {
         await emailTransporter.sendMail(mailOptions);
         console.log(`Alert email sent to ${recipient.role} ${recipient.email} for Patient ${patientId} (${patientName}) - ${alert.type} (${alert.condition})`);
       } catch (error) {
-        console.error(`Failed to send alert email to ${recipient.email}:`, error);
+        if (error.code === 'EENVELOPE') {
+          console.warn(`Invalid email address for recipient ${recipient.email}. Skipping email alert.`);
+        } else {
+          console.error(`Failed to send alert email to ${recipient.email}:`, error);
+        }
       }
     }
+
   }
 }
 
@@ -319,8 +328,9 @@ pool.getConnection()
             patient_id INT,
             sender_id INT,
             content TEXT,
-            message_type ENUM('text', 'image') DEFAULT 'text',
+            message_type ENUM('text', 'image', 'audio') DEFAULT 'text',
             image_url LONGTEXT,
+            is_read BOOLEAN DEFAULT FALSE,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (hospital_id) REFERENCES hospitals (hospital_id) ON DELETE CASCADE,
             FOREIGN KEY (icu_id) REFERENCES icus (icu_id) ON DELETE SET NULL,
@@ -348,6 +358,12 @@ pool.getConnection()
       if (msgImgCols.length > 0 && msgImgCols[0].Type.toLowerCase().includes('varchar')) {
         console.log("Migrating DB: Changing messages.image_url to LONGTEXT...");
         await connection.query("ALTER TABLE messages MODIFY COLUMN image_url LONGTEXT");
+      }
+
+      const [msgReadCols] = await connection.query("SHOW COLUMNS FROM messages LIKE 'is_read'");
+      if (msgReadCols.length === 0) {
+        console.log("Migrating DB: Adding 'is_read' column to messages...");
+        await connection.query("ALTER TABLE messages ADD COLUMN is_read BOOLEAN DEFAULT FALSE AFTER image_url");
       }
 
       // Migration for prescriptions table
@@ -396,6 +412,15 @@ pool.getConnection()
         console.log("Migrating DB: Adding 'additional_data' column to vitals...");
         await connection.query("ALTER TABLE vitals ADD COLUMN additional_data JSON AFTER source");
       }
+
+      // Migration for patients table to support SBAR persistence
+      const [patientCols] = await connection.query("SHOW COLUMNS FROM patients LIKE 'sbar_summary'");
+      if (patientCols.length === 0) {
+        console.log("Migrating DB: Adding 'sbar_summary' column to patients...");
+        await connection.query("ALTER TABLE patients ADD COLUMN sbar_summary LONGTEXT AFTER diagnosis");
+      }
+
+
     } catch (err) {
       console.error('Migration Warning:', err.message);
     }
@@ -458,6 +483,14 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('monitoring-stopped', (data) => {
+    const { patient_id } = data;
+    console.log(`Monitoring stopped for Patient ${patient_id}`);
+
+    // Relay to the patient's room so doctors can clear their UI
+    io.to(`patient-${patient_id}`).emit('monitoring-stopped', data);
+  });
+
   socket.on('vital-update', (data) => {
     const { patient_id } = data;
     // Relay vitals to the patient's room for real-time doctor view
@@ -476,7 +509,7 @@ io.on('connection', (socket) => {
 
       // Save to database
       const [result] = await pool.query(
-        'INSERT INTO messages (hospital_id, icu_id, patient_id, sender_id, content, message_type, image_url) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        'INSERT INTO messages (hospital_id, icu_id, patient_id, sender_id, content, message_type, image_url, is_read) VALUES (?, ?, ?, ?, ?, ?, ?, FALSE)',
         [hospital_id, icu_id || null, patient_id || null, sender_id, content, message_type || 'text', image_url || null]
       );
 
@@ -519,6 +552,7 @@ io.on('connection', (socket) => {
     console.log('Client disconnected:', socket.id);
   });
 });
+
 
 // Chat Routes
 app.get('/api/messages/:hospitalId', authenticateToken, async (req, res) => {
@@ -592,6 +626,59 @@ app.delete('/api/messages/:hospitalId', authenticateToken, async (req, res) => {
     res.json({ message: 'Chat cleared successfully' });
   } catch (error) {
     console.error('Error clearing messages:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.post('/api/messages/mark-read', authenticateToken, async (req, res) => {
+  const { hospitalId, icuId, patientId } = req.body;
+
+  try {
+    let query = 'UPDATE messages SET is_read = TRUE WHERE hospital_id = ? AND is_read = FALSE';
+    let params = [hospitalId];
+
+    if (patientId) {
+      query += ' AND patient_id = ?';
+      params.push(patientId);
+    } else if (icuId) {
+      query += ' AND icu_id = ? AND patient_id IS NULL';
+      params.push(icuId);
+    } else {
+      query += ' AND patient_id IS NULL AND icu_id IS NULL';
+    }
+
+    await pool.query(query, params);
+
+    // Notify clients that messages are read
+    io.to(`hospital-${hospitalId}`).emit('messages-read', { hospitalId, icuId, patientId });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error marking messages as read:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.get('/api/messages/unread-count/:hospitalId', authenticateToken, async (req, res) => {
+  const { hospitalId } = req.params;
+  const { icuId, patientId } = req.query;
+
+  try {
+    let query = 'SELECT COUNT(*) as count FROM messages WHERE hospital_id = ? AND is_read = FALSE';
+    let params = [hospitalId];
+
+    if (patientId) {
+      query += ' AND patient_id = ?';
+      params.push(patientId);
+    } else if (icuId) {
+      query += ' AND icu_id = ?';
+      params.push(icuId);
+    }
+
+    const [rows] = await pool.query(query, params);
+    res.json({ count: rows[0].count });
+  } catch (error) {
+    console.error('Error fetching unread count:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -1393,11 +1480,17 @@ function normalizeVitals(raw) {
 app.get('/api/patients/:id/sbar', authenticateToken, async (req, res) => {
   try {
     const patientId = req.params.id;
+    const { regenerate } = req.query;
 
     // 1. Fetch Patient Details
     const [patientRows] = await pool.query('SELECT * FROM patients WHERE patient_id = ?', [patientId]);
     if (patientRows.length === 0) return res.status(404).json({ error: 'Patient not found' });
     const patient = patientRows[0];
+
+    // If we have a stored summary and not regenerating, return it
+    if (patient.sbar_summary && regenerate !== 'true') {
+      return res.json({ summary: patient.sbar_summary, isStored: true });
+    }
 
     // 2. Fetch last 48 hours of Vitals
     const [vitalRows] = await pool.query(`
@@ -1432,18 +1525,57 @@ app.get('/api/patients/:id/sbar', authenticateToken, async (req, res) => {
           content: `Generate an SBAR summary for this patient based on the following data:\n${context}`
         }
       ],
-      model: "llama-3.3-70b-versatile", // Efficient text model
+      model: "llama-3.3-70b-versatile",
       temperature: 0.3,
     });
 
     const sbarSummary = completion.choices[0].message.content;
-    res.json({ summary: sbarSummary });
+    res.json({ summary: sbarSummary, isStored: false });
 
   } catch (error) {
     console.error('SBAR Generation failed:', error);
     res.status(500).json({ error: 'Failed to generate summary' });
   }
 });
+
+// Save SBAR Summary (Doctors only)
+app.put('/api/patients/:id/sbar', authenticateToken, async (req, res) => {
+  try {
+    const patientId = req.params.id;
+    const { summary } = req.body;
+    const { role } = req.user;
+
+    if (role !== 'doctor' && role !== 'admin') {
+      return res.status(403).json({ error: 'Only doctors can edit clinical summaries' });
+    }
+
+    await pool.query('UPDATE patients SET sbar_summary = ? WHERE patient_id = ?', [summary, patientId]);
+    res.json({ message: 'Summary saved successfully' });
+  } catch (error) {
+    console.error('Failed to save SBAR:', error);
+    res.status(500).json({ error: 'Database update failed' });
+  }
+});
+
+// Save SBAR Summary (Doctors only)
+app.put('/api/patients/:id/sbar', authenticateToken, async (req, res) => {
+  try {
+    const patientId = req.params.id;
+    const { summary } = req.body;
+    const { role } = req.user;
+
+    if (role !== 'doctor' && role !== 'admin') {
+      return res.status(403).json({ error: 'Only doctors can edit clinical summaries' });
+    }
+
+    await pool.query('UPDATE patients SET sbar_summary = ? WHERE patient_id = ?', [summary, patientId]);
+    res.json({ message: 'Summary saved successfully' });
+  } catch (error) {
+    console.error('Failed to save SBAR:', error);
+    res.status(500).json({ error: 'Database update failed' });
+  }
+});
+
 
 // AI Vitals Extraction (Pipeline: Llama -> Qwen -> Tesseract)
 app.post('/api/extract-vitals', authenticateToken, async (req, res) => {

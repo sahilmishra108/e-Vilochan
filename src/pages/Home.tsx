@@ -1,8 +1,9 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Activity, Camera, ArrowRight, Stethoscope, HeartPulse, Brain, MessageSquare, Zap, LogIn, LogOut, Plus, Monitor } from "lucide-react";
+import { Activity, ArrowRight, ShieldCheck, Zap, LogIn, LogOut, LayoutDashboard, Stethoscope, Play, Cpu, Lock, MessageSquare, CheckCircle2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
+import { BackgroundGrid } from "@/components/BackgroundGrid";
 import QuickAdmitDialog from "@/components/QuickAdmitDialog";
 import {
   DropdownMenu,
@@ -18,199 +19,195 @@ const Home = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-background overflow-hidden font-sans selection:bg-primary/20 selection:text-primary">
-      {/* Dynamic Background */}
-      <div className="fixed inset-0 z-0 pointer-events-none">
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808008_1px,transparent_1px),linear-gradient(to_bottom,#80808008_1px,transparent_1px)] bg-[size:24px_24px] animate-grid-flow"></div>
-        <div className="absolute top-0 left-0 right-0 h-full bg-gradient-to-b from-primary/5 via-background to-background"></div>
-        <div className="absolute -top-[20%] -right-[10%] w-[50%] h-[50%] rounded-full bg-primary/10 blur-[120px] animate-pulse-glow"></div>
-        <div className="absolute top-[20%] -left-[10%] w-[40%] h-[40%] rounded-full bg-secondary/10 blur-[100px] animate-pulse-glow" style={{ animationDelay: '2s' }}></div>
-      </div>
+    <div className="min-h-screen bg-slate-50 font-sans selection:bg-slate-900 selection:text-white pb-0 relative overflow-hidden">
+      {/* Subtle Medical Background Pattern */}
+      <BackgroundGrid />
 
-      {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-white/40 backdrop-blur-xl border-b border-white/20">
-        <div className="container mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3 group cursor-pointer" onClick={() => navigate('/')}>
-            <img
-              src="/eye logo.png"
-              alt="e-Vilochan Logo"
-              className="w-12 h-auto group-hover:scale-110 transition-transform duration-500"
-            />
-            <div className="flex flex-col text-left">
-              <span className="font-bold text-2xl tracking-tight text-slate-800">e-Vilochan</span>
-            </div>
+      {/* Refined Navigation */}
+      <header className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-200/80 supports-[backdrop-filter]:bg-white/60">
+        <div className="container mx-auto px-6 h-20 flex items-center justify-between">
+          <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate('/')}>
+            <img src="/eye logo.png" alt="e-Vilochan Logo" className="w-10 h-10 object-contain" />
+            <span className="font-bold text-xl tracking-tight text-slate-900">e-Vilochan</span>
           </div>
 
           <div className="flex items-center gap-4">
             {isAuthenticated ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0 hover:bg-primary/10 transition-colors">
-                    <div className="h-9 w-9 rounded-full bg-primary/20 flex items-center justify-center border border-primary/30">
-                      <Stethoscope className="h-5 w-5 text-primary" />
-                    </div>
+                  <Button variant="ghost" className="relative h-10 w-10 rounded-full bg-slate-100 hover:bg-slate-200 transition-colors">
+                    <Stethoscope className="h-5 w-5 text-slate-700" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-64 mt-2 bg-slate-900/80 backdrop-blur-xl border border-white/10 text-slate-200 shadow-2xl" align="end">
-                  <DropdownMenuLabel className="text-xs font-bold text-primary uppercase tracking-wider px-2 py-1.5 opacity-80 decoration-none">Available Modules</DropdownMenuLabel>
-                  <DropdownMenuSeparator className="bg-white/5" />
+                <DropdownMenuContent className="w-56 mt-2 bg-white border border-slate-200 shadow-xl rounded-lg p-1" align="end">
+                  <DropdownMenuLabel className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-2 py-1.5">Clinical Access</DropdownMenuLabel>
 
                   <Link to="/multicamera">
-                    <DropdownMenuItem className="cursor-pointer rounded-lg p-2.5 hover:bg-white/10 focus:bg-white/10 focus:text-white transition-colors">
-                      <Camera className="w-4 h-4 mr-2 text-primary" />
-                      <span className="font-medium">Multi Camera View</span>
+                    <DropdownMenuItem className="cursor-pointer rounded-md px-2 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 focus:bg-slate-50">
+                      <LayoutDashboard className="w-4 h-4 mr-2" /> Multi-View
                     </DropdownMenuItem>
                   </Link>
 
                   <QuickAdmitDialog trigger={
-                    <div role="menuitem" className="flex select-none items-center rounded-lg p-2.5 text-sm outline-none cursor-pointer hover:bg-white/10 focus:bg-white/10 focus:text-white transition-colors text-slate-200">
-                      <Plus className="w-4 h-4 mr-2 text-emerald-400" />
-                      <span className="font-medium">Quick Admit & Monitor</span>
+                    <div role="menuitem" className="flex select-none items-center rounded-md px-2 py-2 text-sm font-medium text-slate-700 outline-none cursor-pointer hover:bg-slate-50 focus:bg-slate-50">
+                      <Zap className="w-4 h-4 mr-2" /> Quick Admit
                     </div>
                   } />
 
                   <Link to="/patients">
-                    <DropdownMenuItem className="cursor-pointer rounded-lg p-2.5 hover:bg-white/10 focus:bg-white/10 focus:text-white transition-colors">
-                      <Monitor className="w-4 h-4 mr-2 text-blue-400" />
-                      <span className="font-medium">Patient Records</span>
+                    <DropdownMenuItem className="cursor-pointer rounded-md px-2 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 focus:bg-slate-50">
+                      <Activity className="w-4 h-4 mr-2" /> Patient Records
                     </DropdownMenuItem>
                   </Link>
 
-                  <DropdownMenuSeparator className="bg-white/5" />
+                  <DropdownMenuSeparator className="bg-slate-100 my-1" />
                   <DropdownMenuItem
-                    className="cursor-pointer rounded-lg p-2.5 text-rose-400 hover:bg-rose-500/10 focus:bg-rose-500/10 transition-colors"
+                    className="cursor-pointer rounded-md px-2 py-2 text-sm font-medium text-rose-600 hover:bg-rose-50 focus:bg-rose-50"
                     onClick={() => {
                       logout();
                       navigate('/');
                     }}
                   >
-                    <LogOut className="w-4 h-4 mr-2" />
-                    <span className="font-medium">Logout Clinical Session</span>
+                    <LogOut className="w-4 h-4 mr-2" /> Sign Out
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
               <Button
                 onClick={() => navigate('/login')}
-                className="bg-primary hover:bg-primary/90 text-white rounded-full px-6 flex items-center gap-2 shadow-lg shadow-primary/20 transition-all hover:scale-105 active:scale-95 border-none"
+                variant="ghost"
+                className="font-semibold text-slate-600 hover:text-slate-900 hover:bg-transparent text-base"
               >
-                <LogIn className="w-4 h-4" />
-                <span className="font-semibold">Clinical Login</span>
+                Sign In
+              </Button>
+            )}
+            {!isAuthenticated && (
+              <Button
+                onClick={() => navigate('/login')}
+                className="bg-slate-900 hover:bg-slate-800 text-white rounded-full px-6 h-10 text-sm font-medium shadow-none transition-all hover:bg-slate-700"
+              >
+                Get Started
               </Button>
             )}
           </div>
         </div>
       </header>
 
-      {/* Hero Section */}
-      <main className="container mx-auto px-6 pt-32 pb-20 relative z-10">
-        <div className="max-w-7xl mx-auto">
-          <div className="glass-card rounded-[2.5rem] overflow-hidden mb-20 border-white/30 group">
-            <div className="grid lg:grid-cols-2">
-              <div className="p-12 lg:p-20 flex flex-col justify-center relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-64 h-64 bg-primary/10 rounded-full blur-3xl -ml-32 -mt-32 animate-pulse"></div>
+      <main className="pt-36 relative z-10">
+        <div className="container mx-auto px-6">
+          {/* Minimalist Hero */}
+          <div className="max-w-4xl mx-auto text-center mb-24">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white border border-slate-200 text-slate-600 text-[11px] font-bold uppercase tracking-widest mb-8 shadow-sm">
+              <Activity className="w-3 h-3 text-emerald-500" />
+              Clinical Decision Support System
+            </div>
 
-                <div className="relative z-10">
-                  <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary mb-8 animate-fade-in-up">
-                    <HeartPulse className="w-4 h-4" />
-                    <span className="text-[10px] font-bold uppercase tracking-[0.2em]">Next-Gen Patient Monitoring</span>
-                  </div>
+            <h1 className="text-5xl md:text-7xl font-bold text-slate-900 tracking-tight mb-8 leading-[1.1]">
+              The Smart <br />
+              <span className="text-slate-900">ICU Monitoring</span>
+            </h1>
 
-                  <h1 className="text-6xl lg:text-7xl font-extrabold text-slate-900 mb-8 leading-[1.1] tracking-tight animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
-                    The Smart <br />
-                    <span className="animate-text-shimmer">ICU</span> <br />
+            <p className="text-xl text-slate-500 max-w-2xl mx-auto leading-relaxed mb-12 font-medium">
+              Next-generation contactless patient monitoring powered by advanced computer vision.
+              Precision diagnostics, zero physical contact.
+            </p>
 
-                  </h1>
-
-                  <p className="text-xl text-slate-600 mb-12 leading-relaxed max-w-lg animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
-                    Empowering healthcare providers with real-time AI vision and seamless clinical collaboration for faster, smarter decision-making in high-acuity environments.
-                  </p>
-
-                  <div className="flex flex-wrap gap-4 animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
-                    {!isAuthenticated ? (
-                      <div className="flex flex-col gap-6 animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
-                        <Button
-                          size="lg"
-                          onClick={() => navigate('/login')}
-                          className="bg-primary hover:bg-primary/90 text-white px-10 h-16 rounded-2xl shadow-xl shadow-primary/20 text-lg font-bold flex items-center gap-3 transition-all hover:scale-105 active:scale-95 border-none group/launch"
-                        >
-                          Launch Smart ICU
-                          <ArrowRight className="w-5 h-5 group-hover/launch:translate-x-2 transition-transform" />
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="flex flex-wrap gap-4">
-                        <Button
-                          size="lg"
-                          onClick={() => navigate('/patients')}
-                          className="bg-primary hover:bg-primary/90 text-white px-10 h-16 rounded-2xl shadow-xl shadow-primary/20 text-lg font-bold transition-all hover:scale-105 active:scale-95 border-none"
-                        >
-                          Patient Records
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Visual Section */}
-              <div className="relative hidden lg:block overflow-hidden bg-slate-100 h-full">
-                <div className="absolute inset-0 bg-gradient-to-r from-white/40 to-transparent z-10 pointer-events-none"></div>
-                <img
-                  src="/Gemini_Generated_Image_6xwqr56xwqr56xwq.png"
-                  alt="Clinical Monitor Analysis"
-                  className="w-full h-full object-cover transform scale-110 group-hover:scale-100 transition-transform duration-[2000ms] opacity-90"
-                />
-              </div>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+              {!isAuthenticated ? (
+                <Button
+                  onClick={() => navigate('/login')}
+                  className="h-14 px-10 rounded-full bg-slate-900 hover:bg-slate-800 text-white text-lg font-bold shadow-lg shadow-slate-900/10 transition-all hover:-translate-y-0.5"
+                >
+                  Launch Platform <ArrowRight className="w-5 h-5 ml-2" />
+                </Button>
+              ) : (
+                <Button
+                  onClick={() => navigate('/patients')}
+                  className="h-14 px-10 rounded-full bg-slate-900 hover:bg-slate-800 text-white text-lg font-bold shadow-lg shadow-slate-900/10 transition-all hover:-translate-y-0.5"
+                >
+                  Access Records <ArrowRight className="w-5 h-5 ml-2" />
+                </Button>
+              )}
             </div>
           </div>
 
-          {/* Feature Grid */}
-          <div className="grid md:grid-cols-3 gap-10 mb-20">
-            {[
-              {
-                icon: <Brain className="w-10 h-10 text-primary" />,
-                title: "Llama-Qwen Pipeline",
-                desc: "Verified clinical monitoring using a multi-step Llama extraction and Qwen2-VL verification engine for zero-error vitals tracking.",
-                bg: "bg-primary/5",
-                gradient: "from-primary/20 to-transparent"
-              },
-              {
-                icon: <MessageSquare className="w-10 h-10 text-secondary" />,
-                title: "Isolated Coordination",
-                desc: "Clinically-isolated chat rooms with secure, high-capacity image transmission for real-time staff collaboration and patient sync.",
-                bg: "bg-secondary/5",
-                gradient: "from-secondary/20 to-transparent"
-              },
-              {
-                icon: <Zap className="w-10 h-10 text-blue-500" />,
-                title: "AI Clinical Summary",
-                desc: "Automated SBAR generation utilizing 48-hour longitudinal data to provide rapid, actionable insights for ICU clinical rounds.",
-                bg: "bg-blue-500/5",
-                gradient: "from-blue-500/20 to-transparent"
-              }
-            ].map((feature, idx) => (
-              <div key={idx} className="glass-card glass-border p-10 rounded-[2.5rem] hover:-translate-y-4 transition-all duration-500 group relative">
-                <div className={`absolute top-0 right-0 w-40 h-40 bg-gradient-to-br ${feature.gradient} rounded-bl-full opacity-0 group-hover:opacity-100 transition-opacity duration-700`}></div>
-                <div className={`w-20 h-20 rounded-3xl ${feature.bg} flex items-center justify-center mb-8 group-hover:scale-110 transition-transform duration-500 relative z-10 shadow-inner`}>
-                  {feature.icon}
-                </div>
-                <h3 className="text-2xl font-bold text-slate-800 mb-4 relative z-10 tracking-tight">{feature.title}</h3>
-                <p className="text-slate-600 leading-relaxed relative z-10 text-lg">
-                  {feature.desc}
-                </p>
+          {/* Expanded Feature Grid */}
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-7xl mx-auto mb-24">
+            {/* Card 1: Vitals */}
+            <div className="bg-white p-8 rounded-[2rem] border border-slate-200 shadow-sm hover:border-slate-300 hover:shadow-md transition-all duration-300">
+              <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-900 mb-6 border border-slate-100">
+                <Activity className="w-6 h-6" />
               </div>
-            ))}
+              <h3 className="text-lg font-bold text-slate-900 mb-3">Contactless Vitals</h3>
+              <p className="text-slate-500 leading-relaxed text-sm font-medium">
+                Real-time extraction of Heart Rate, SpO2, and Respiratory Rate using medical-grade computer vision algorithms.
+              </p>
+            </div>
+
+            {/* Card 2: SBAR */}
+            <div className="bg-white p-8 rounded-[2rem] border border-slate-200 shadow-sm hover:border-slate-300 hover:shadow-md transition-all duration-300">
+              <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-900 mb-6 border border-slate-100">
+                <ShieldCheck className="w-6 h-6" />
+              </div>
+              <h3 className="text-lg font-bold text-slate-900 mb-3">Secure SBAR</h3>
+              <p className="text-slate-500 leading-relaxed text-sm font-medium">
+                Automated, role-based SBAR reports generated from 48-hour patient history data for efficient handoffs.
+              </p>
+            </div>
+
+            {/* Card 3: Alerts */}
+            <div className="bg-white p-8 rounded-[2rem] border border-slate-200 shadow-sm hover:border-slate-300 hover:shadow-md transition-all duration-300">
+              <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-900 mb-6 border border-slate-100">
+                <Zap className="w-6 h-6" />
+              </div>
+              <h3 className="text-lg font-bold text-slate-900 mb-3">Instant Alerts</h3>
+              <p className="text-slate-500 leading-relaxed text-sm font-medium">
+                Immediate anomaly detection with multi-channel notifications (Push, Email) to the assigned response team.
+              </p>
+            </div>
+
+            {/* Card 4: AI Core */}
+            <div className="bg-white p-8 rounded-[2rem] border border-slate-200 shadow-sm hover:border-slate-300 hover:shadow-md transition-all duration-300">
+              <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-900 mb-6 border border-slate-100">
+                <Cpu className="w-6 h-6" />
+              </div>
+              <h3 className="text-lg font-bold text-slate-900 mb-3">Llama & Qwen Core</h3>
+              <p className="text-slate-500 leading-relaxed text-sm font-medium">
+                Powered by state-of-the-art Large Language Models for context-aware medical reasoning and visual analysis.
+              </p>
+            </div>
+
+            {/* Card 5: Security */}
+            <div className="bg-white p-8 rounded-[2rem] border border-slate-200 shadow-sm hover:border-slate-300 hover:shadow-md transition-all duration-300">
+              <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-900 mb-6 border border-slate-100">
+                <Lock className="w-6 h-6" />
+              </div>
+              <h3 className="text-lg font-bold text-slate-900 mb-3">Enterprise Security</h3>
+              <p className="text-slate-500 leading-relaxed text-sm font-medium">
+                End-to-end encryption for all patient data streams with role-based access control and audit logging.
+              </p>
+            </div>
+
+            {/* Card 6: ICU Chat */}
+            <div className="bg-white p-8 rounded-[2rem] border border-slate-200 shadow-sm hover:border-slate-300 hover:shadow-md transition-all duration-300">
+              <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-900 mb-6 border border-slate-100">
+                <MessageSquare className="w-6 h-6" />
+              </div>
+              <h3 className="text-lg font-bold text-slate-900 mb-3">ICU Collaboration Chat</h3>
+              <p className="text-slate-500 leading-relaxed text-sm font-medium">
+                Secure, real-time communication channels for multidisciplinary teams to coordinate critical patient care instantly.
+              </p>
+            </div>
           </div>
         </div>
       </main>
 
-      {/* Footer */}
-      <footer className="bg-slate-900 py-16 text-white border-t border-slate-800 relative z-10">
-        <div className="container mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-8">
-          <div className="flex items-center gap-3">
-            <img src="/eye logo.png" alt="Logo" className="w-8 h-auto opacity-80" />
-            <span className="font-bold text-lg tracking-tight">e-Vilochan</span>
+      <footer className="bg-slate-900 text-slate-300 py-16 relative z-10">
+        <div className="container mx-auto px-6">
+          <div className="flex flex-col items-center justify-center text-center">
+            <div className="flex items-center gap-4 cursor-pointer hover:opacity-80 transition-opacity" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+              <span className="font-bold text-3xl text-white tracking-tight">e-Vilochan</span>
+            </div>
           </div>
         </div>
       </footer>

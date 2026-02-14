@@ -147,7 +147,7 @@ const Register = () => {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-emerald-50/30 to-slate-100 p-4 py-12 relative overflow-hidden">
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-emerald-50/30 to-slate-100 p-2 md:p-4 py-8 md:py-12 relative overflow-hidden">
             {/* Grid Background Pattern */}
             <div
                 className="absolute inset-0 opacity-[0.15]"
@@ -175,7 +175,7 @@ const Register = () => {
                         </div>
                     </div>
                     <div className="text-center space-y-1">
-                        <h2 className="text-sm font-bold text-blue-600 tracking-[0.3em]">e-Vilochan</h2>
+                        <h2 className="text-sm font-bold text-blue-600 tracking-[0.3em]"><span className="text-[11px]">e</span>-Vilochan</h2>
                         <CardTitle className="text-3xl text-center font-black tracking-tight text-slate-900">
                             Create Account
                         </CardTitle>

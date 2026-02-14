@@ -156,7 +156,7 @@ const MultiCameraView = () => {
                             className="w-10 h-auto hover:scale-110 transition-transform duration-500"
                         />
                         <div className="flex flex-col">
-                            <h1 className="text-xl font-bold text-slate-800 tracking-tight">e-Vilochan</h1>
+                            <h1 className="text-xl font-bold text-slate-800 tracking-tight"><span className="text-[0.8em]">e</span>-Vilochan</h1>
                             <div className="flex items-center gap-2">
                                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                                 <span className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Live Monitoring</span>

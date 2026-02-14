@@ -479,72 +479,82 @@ const Dashboard = ({ patientId, patientData }: DashboardProps) => {
         <div />
       </div>
 
-      {/* Professional Medical Vital Panel - Image Style */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-6 px-4 pb-8">
+      {/* Professional Medical Vital Panel - Formal Analysis Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 px-4 pb-8">
         {[
-          { label: 'Heart Rate', value: extremes.hr, unit: 'bpm', color: 'rose', icon: Heart, type: 'single', animation: 'animate-pulse' },
-          { label: 'Pulse Rate', value: extremes.pulse, unit: 'bpm', color: 'rose', icon: Activity, type: 'single', animation: 'animate-bounce-subtle' },
-          { label: 'SpO2', value: extremes.spo2, unit: '%', color: 'cyan', icon: Wind, type: 'single', animation: 'animate-pulse-slow' },
-          { label: 'ABP', value: extremes.abp, unit: 'mmHg', color: 'amber', icon: BarChart2, type: 'pressure', animation: 'animate-pulse-fast' },
-          { label: 'PAP', value: extremes.pap, unit: 'mmHg', color: 'amber', icon: TrendingUp, type: 'pressure', animation: 'animate-pulse-fast' },
-          { label: 'EtCO2', value: extremes.etco2, unit: 'mmHg', color: 'emerald', icon: Thermometer, type: 'single', animation: 'animate-pulse-slow' },
-          { label: 'awRR', value: extremes.awrr, unit: '/min', color: 'blue', icon: Waves, type: 'single', animation: 'animate-pulse' },
+          { label: 'Heart Rate', value: extremes.hr, unit: 'BPM', color: 'rose', icon: Heart, type: 'single' },
+          { label: 'Pulse Rate', value: extremes.pulse, unit: 'BPM', color: 'rose', icon: Activity, type: 'single' },
+          { label: 'Saturation', value: extremes.spo2, unit: '% SpO2', color: 'cyan', icon: Wind, type: 'single' },
+          { label: 'ETCO2', value: extremes.etco2, unit: 'mmHg', color: 'emerald', icon: Thermometer, type: 'single' },
+          { label: 'ABP System', value: extremes.abp, unit: 'mmHg', color: 'amber', icon: BarChart2, type: 'pressure' },
+          { label: 'PAP Pulmon', value: extremes.pap, unit: 'mmHg', color: 'amber', icon: TrendingUp, type: 'pressure' },
+          { label: 'awRR Resp', value: extremes.awrr, unit: '/min', color: 'blue', icon: Waves, type: 'single' },
         ].map((item, idx) => (
           <Card
             key={idx}
-            className="group relative flex flex-col overflow-hidden rounded-[2rem] border border-slate-100 bg-white p-5 shadow-[0_15px_35px_rgba(0,0,0,0.03)] transition-all duration-300 hover:shadow-[0_25px_50px_rgba(0,0,0,0.06)] hover:-translate-y-1 animate-fade-in-up"
+            className="group relative flex flex-col overflow-hidden rounded-[2rem] border-2 border-slate-100 bg-white shadow-xl transition-all duration-300 hover:border-primary/20 animate-fade-in-up"
             style={{ animationDelay: `${idx * 50}ms` }}
           >
-            <div className="flex flex-col items-center mb-4">
-              <div className={`flex h-12 w-12 items-center justify-center rounded-full bg-${item.color}-50/50 shadow-[inset_0_2px_4px_rgba(0,0,0,0.03)] border border-${item.color}-100/50 mb-2 transition-transform duration-500 group-hover:scale-110`}>
-                <item.icon className={`h-5 w-5 text-${item.color}-500 ${(item as any).animation}`} />
+            {/* Header Section */}
+            <div className="p-6 pb-4 border-b border-slate-50 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className={`p-2.5 rounded-xl bg-${item.color}-50 text-${item.color}-500 shadow-sm`}>
+                  <item.icon className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-xs font-black text-slate-800 uppercase tracking-widest">{item.label}</h3>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{item.unit}</span>
+                </div>
               </div>
-              <h3 className="text-[10px] font-black text-slate-800 uppercase tracking-[0.1em] text-center mb-0.5 leading-tight">{item.label}</h3>
-              <span className="text-[8px] font-extrabold text-slate-300 uppercase tracking-[0.1em]">{item.unit === 'mmHg' ? 'MMHG' : item.unit === 'bpm' ? 'BPM' : item.unit}</span>
             </div>
 
-            <div className="border-t border-slate-50 w-full mb-4" />
-
-            <div className="grid grid-cols-2 w-full gap-0">
-              {/* MAX Column */}
-              <div className="flex flex-col items-center border-r border-slate-50 px-0.5">
-                <span className="text-[7.5px] font-black text-slate-300 uppercase tracking-widest mb-1">MAX</span>
+            {/* Analysis Grid */}
+            <div className="grid grid-cols-2 bg-slate-50/30">
+              {/* MAX Block */}
+              <div className="p-6 border-r border-slate-50 flex flex-col items-center">
+                <div className="flex items-center gap-1.5 mb-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-slate-300"></span>
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">MAX</span>
+                </div>
                 <div className="flex flex-col items-center">
                   {item.type === 'single' ? (
-                    <span className="text-xl font-black text-slate-800 tracking-tighter leading-none">
+                    <span className={`text-4xl font-mono font-black text-slate-900 tracking-tighter`}>
                       {(item.value as any).max}
                     </span>
                   ) : (
-                    <div className="flex items-center leading-none">
-                      <span className="text-[14px] font-black text-slate-800 tracking-tighter">{(item.value as any).sysMax}</span>
-                      <span className="text-[10px] font-black text-slate-200 mx-0.5">/</span>
-                      <span className="text-[10px] font-black text-slate-400 tracking-tighter">{(item.value as any).diaMax}</span>
+                    <div className="flex items-baseline gap-0.5">
+                      <span className="text-3xl font-mono font-black text-slate-900 tracking-tighter">{(item.value as any).sysMax}</span>
+                      <span className="text-xl font-mono font-black text-slate-300">/</span>
+                      <span className="text-xl font-mono font-bold text-slate-500 tracking-tighter">{(item.value as any).diaMax}</span>
                     </div>
                   )}
-                  <span className="text-[7.5px] font-black text-slate-600 text-center leading-tight mt-1 px-1">
-                    [{(item.value as any).maxTime || (item.value as any).sysMaxTime}]
-                  </span>
+                  <div className="mt-2 text-[8px] font-bold text-slate-500 bg-white px-2 py-0.5 rounded-full border border-slate-100 shadow-sm">
+                    {(item.value as any).maxTime || (item.value as any).sysMaxTime}
+                  </div>
                 </div>
               </div>
 
-              {/* MIN Column */}
-              <div className="flex flex-col items-center px-0.5">
-                <span className="text-[7.5px] font-black text-slate-300 uppercase tracking-widest mb-1">MIN</span>
+              {/* MIN Block */}
+              <div className="p-6 flex flex-col items-center">
+                <div className="flex items-center gap-1.5 mb-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-slate-200"></span>
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">MIN</span>
+                </div>
                 <div className="flex flex-col items-center">
                   {item.type === 'single' ? (
-                    <span className="text-lg font-black text-slate-500 tracking-tighter leading-none">
+                    <span className="text-4xl font-mono font-black text-slate-400 tracking-tighter">
                       {(item.value as any).min}
                     </span>
                   ) : (
-                    <div className="flex items-center leading-none">
-                      <span className="text-[13px] font-black text-slate-500 tracking-tighter">{(item.value as any).sysMin}</span>
-                      <span className="text-[8px] font-black text-slate-200 mx-0.5">/</span>
-                      <span className="text-[9px] font-black text-slate-300 tracking-tighter">{(item.value as any).diaMin}</span>
+                    <div className="flex items-baseline gap-0.5">
+                      <span className="text-3xl font-mono font-black text-slate-400 tracking-tighter">{(item.value as any).sysMin}</span>
+                      <span className="text-xl font-mono font-black text-slate-200">/</span>
+                      <span className="text-xl font-mono font-bold text-slate-300 tracking-tighter">{(item.value as any).diaMin}</span>
                     </div>
                   )}
-                  <span className="text-[7.5px] font-black text-slate-500 text-center leading-tight mt-1 px-1">
-                    [{(item.value as any).minTime || (item.value as any).sysMinTime}]
-                  </span>
+                  <div className="mt-2 text-[8px] font-bold text-slate-400 bg-white/50 px-2 py-0.5 rounded-full border border-slate-50">
+                    {(item.value as any).minTime || (item.value as any).sysMinTime}
+                  </div>
                 </div>
               </div>
             </div>
@@ -581,88 +591,98 @@ const Dashboard = ({ patientId, patientData }: DashboardProps) => {
 
       {/* Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-fade-in-up delay-700">
-        <Card className="p-8 bg-white/60 backdrop-blur-md border-white/20 shadow-xl rounded-[2rem] hover:shadow-2xl transition-all duration-500">
-          <div className="flex items-center justify-between mb-8">
+        <Card className="p-0 overflow-hidden bg-slate-950 border-slate-800 shadow-2xl rounded-[2rem] border-2 group">
+          <div className="bg-slate-900/80 px-8 py-4 border-b border-slate-800 flex items-center justify-between">
             <div>
-              <h2 className="text-xl font-black text-slate-900 tracking-tight">Heart Dynamics</h2>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">HR & Pulse Correlation</p>
+              <h2 className="text-lg font-black text-slate-200 tracking-tight uppercase">Heart Dynamics</h2>
+              <div className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></span>
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">HR & Pulse Correlation</p>
+              </div>
             </div>
             <div className="flex gap-4">
               <span className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-rose-500">
-                <span className="w-2.5 h-2.5 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.4)]"></span> HR
+                <span className="w-2 h-2 rounded-full bg-rose-500"></span> HR
               </span>
-              <span className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-rose-300">
-                <span className="w-2.5 h-2.5 rounded-full bg-rose-300"></span> Pulse
+              <span className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-rose-300/60">
+                <span className="w-2 h-2 rounded-full bg-rose-300/40"></span> Pulse
               </span>
             </div>
           </div>
-          <ResponsiveContainer width="100%" height={300}>
-            <AreaChart data={chartData}>
-              <defs>
-                <linearGradient id="colorHR" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.4} />
-                  <stop offset="95%" stopColor="#f43f5e" stopOpacity={0} />
-                </linearGradient>
-                <linearGradient id="colorPulse" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#fda4af" stopOpacity={0.4} />
-                  <stop offset="95%" stopColor="#fda4af" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" vertical={false} />
-              <XAxis dataKey="time" stroke="#94a3b8" fontSize={10} fontWeight="900" tickLine={false} axisLine={false} tickFormatter={(val) => val.split(' ')[0]} />
-              <YAxis stroke="#94a3b8" fontSize={10} fontWeight="900" tickLine={false} axisLine={false} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                  borderRadius: '16px',
-                  border: '1px solid rgba(0,0,0,0.05)',
-                  boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
-                  fontSize: '11px',
-                  fontWeight: '700',
-                  color: '#1e293b'
-                }}
-              />
-              <Area type="monotone" dataKey="HR" stroke="#f43f5e" strokeWidth={4} fillOpacity={1} fill="url(#colorHR)" animationDuration={1000} />
-              <Area type="monotone" dataKey="Pulse" stroke="#fda4af" strokeWidth={4} fillOpacity={1} fill="url(#colorPulse)" animationDuration={1000} />
-            </AreaChart>
-          </ResponsiveContainer>
+
+          <div className="p-8 relative h-[350px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={chartData}>
+                <defs>
+                  <linearGradient id="colorHR" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.2} />
+                    <stop offset="95%" stopColor="#f43f5e" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="1 4" stroke="#1e293b" vertical={true} />
+                <XAxis dataKey="time" hide />
+                <YAxis domain={['dataMin - 5', 'dataMax + 5']} stroke="#475569" fontSize={10} fontWeight="900" tickLine={false} axisLine={false} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#0f172a',
+                    borderRadius: '12px',
+                    border: '1px solid #1e293b',
+                    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)',
+                    fontSize: '11px',
+                    color: '#f8fafc'
+                  }}
+                />
+                <Area type="monotone" dataKey="HR" stroke="#f43f5e" strokeWidth={3} fillOpacity={1} fill="url(#colorHR)" isAnimationActive={false} />
+                <Area type="monotone" dataKey="Pulse" stroke="#fda4af66" strokeWidth={2} strokeDasharray="5 5" fill="transparent" isAnimationActive={false} />
+              </AreaChart>
+            </ResponsiveContainer>
+            {/* Scan Line Effect */}
+            <div className="absolute top-0 right-0 bottom-0 w-px bg-rose-500/20 shadow-[0_0_15px_rgba(244,63,94,0.3)] z-20 animate-[scan-line_4s_linear_infinite]"></div>
+          </div>
         </Card>
 
-        <Card className="p-8 bg-white/60 backdrop-blur-md border-white/20 shadow-xl rounded-[2rem] hover:shadow-2xl transition-all duration-500">
-          <div className="flex items-center justify-between mb-8">
+        <Card className="p-0 overflow-hidden bg-slate-950 border-slate-800 shadow-2xl rounded-[2rem] border-2 group">
+          <div className="bg-slate-900/80 px-8 py-4 border-b border-slate-800 flex items-center justify-between">
             <div>
-              <h2 className="text-xl font-black text-slate-900 tracking-tight">Ventilation Index</h2>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">SpO2 Oxygen Saturation</p>
+              <h2 className="text-lg font-black text-slate-200 tracking-tight uppercase">Ventilation Index</h2>
+              <div className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-pulse"></span>
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">SpO2 Oxygen Saturation</p>
+              </div>
             </div>
             <span className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-cyan-500">
-              <span className="w-2.5 h-2.5 rounded-full bg-cyan-500 shadow-[0_0_8px_rgba(6,182,212,0.4)]"></span> SpO2
+              <span className="w-2 h-2 rounded-full bg-cyan-500"></span> SpO2
             </span>
           </div>
-          <ResponsiveContainer width="100%" height={300}>
-            <AreaChart data={chartData}>
-              <defs>
-                <linearGradient id="colorSpO2" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.4} />
-                  <stop offset="95%" stopColor="#06b6d4" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" vertical={false} />
-              <XAxis dataKey="time" stroke="#94a3b8" fontSize={10} fontWeight="900" tickLine={false} axisLine={false} tickFormatter={(val) => val.split(' ')[0]} />
-              <YAxis domain={[80, 100]} stroke="#94a3b8" fontSize={10} fontWeight="900" tickLine={false} axisLine={false} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                  borderRadius: '16px',
-                  border: '1px solid rgba(0,0,0,0.05)',
-                  boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
-                  fontSize: '11px',
-                  fontWeight: '700',
-                  color: '#1e293b'
-                }}
-              />
-              <Area type="monotone" dataKey="SpO2" stroke="#06b6d4" strokeWidth={4} fillOpacity={1} fill="url(#colorSpO2)" animationDuration={1000} />
-            </AreaChart>
-          </ResponsiveContainer>
+
+          <div className="p-8 relative h-[350px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={chartData}>
+                <defs>
+                  <linearGradient id="colorSpO2" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.2} />
+                    <stop offset="95%" stopColor="#06b6d4" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="1 4" stroke="#1e293b" vertical={true} />
+                <XAxis dataKey="time" hide />
+                <YAxis domain={[80, 100]} stroke="#475569" fontSize={10} fontWeight="900" tickLine={false} axisLine={false} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#0f172a',
+                    borderRadius: '12px',
+                    border: '1px solid #1e293b',
+                    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)',
+                    fontSize: '11px',
+                    color: '#f8fafc'
+                  }}
+                />
+                <Area type="monotone" dataKey="SpO2" stroke="#06b6d4" strokeWidth={3} fillOpacity={1} fill="url(#colorSpO2)" isAnimationActive={false} />
+              </AreaChart>
+            </ResponsiveContainer>
+            {/* Scan Line Effect */}
+            <div className="absolute top-0 right-0 bottom-0 w-px bg-cyan-500/20 shadow-[0_0_15px_rgba(6,182,212,0.3)] z-20 animate-[scan-line_4s_linear_infinite]"></div>
+          </div>
         </Card>
       </div>
 

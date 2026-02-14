@@ -508,9 +508,13 @@ const PrescriptionSheet = ({ patientId, patientName, hospitalName, customButton 
         <Sheet>
             <SheetTrigger asChild>
                 {customButton ? customButton : (
-                    <Button variant="outline" className="flex items-center gap-2 bg-white/50 backdrop-blur-sm border-slate-200 hover:bg-white hover:border-primary/50 transition-all hover:scale-105 shadow-sm rounded-full px-4 text-slate-700">
-                        <Pill className="w-4 h-4 text-emerald-500" />
-                        Prescription
+                    <Button variant="outline" className="w-full flex items-center justify-center gap-4 bg-white/40 backdrop-blur-xl border border-white/20 hover:bg-white/60 hover:border-emerald-500/50 hover:shadow-2xl hover:shadow-emerald-500/10 hover:-translate-y-0.5 transition-all duration-500 shadow-sm rounded-2xl h-14 px-6 text-slate-700 active:scale-[0.98] group">
+                        <div className="p-2.5 bg-emerald-500/10 rounded-xl group-hover:bg-emerald-500/20 transition-all duration-500">
+                            <Pill className="w-4 h-4 text-emerald-600" />
+                        </div>
+                        <span className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-600 group-hover:text-slate-900 transition-colors whitespace-nowrap">
+                            Prescription
+                        </span>
                     </Button>
                 )}
             </SheetTrigger>

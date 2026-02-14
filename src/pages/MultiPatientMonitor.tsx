@@ -96,7 +96,7 @@ const MultiPatientMonitor = () => {
                     <div className="flex items-center gap-6">
                         <div className="flex items-center gap-2 cursor-pointer transition-transform hover:scale-105" onClick={() => navigate('/')}>
                             <img src="/eye logo.png" alt="Logo" className="h-8 w-auto" />
-                            <span className="font-black text-xl tracking-tight text-slate-800">e-Vilochan</span>
+                            <span className="font-black text-xl tracking-tight text-slate-800"><span className="text-[0.8em]">e</span>-Vilochan</span>
                         </div>
                         <div className="h-8 w-px bg-slate-200 mx-2 hidden md:block"></div>
                         <div className="flex items-center gap-4">

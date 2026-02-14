@@ -67,7 +67,7 @@ const ConnectWithPatient = ({ patientName, isCollapsed, variant = 'sidebar' }: C
 
     const buttonClass = variant === 'sidebar'
         ? `w-full bg-slate-900/50 hover:bg-slate-800 text-white shadow-xl shadow-slate-900/20 transition-all duration-300 font-black rounded-2xl gap-3 border border-white/5 active:scale-95 group relative ${isCollapsed ? 'p-0 h-10 w-10 mx-auto justify-center' : 'px-6 h-14'}`
-        : "w-full flex items-center justify-center gap-2 bg-white/50 backdrop-blur-sm border border-slate-200 hover:bg-white hover:border-blue-400 Transition-all hover:scale-105 shadow-sm rounded-full h-11 px-4 text-slate-700 font-bold active:scale-95 group transition-all duration-300";
+        : "w-full flex items-center justify-center gap-4 bg-white/40 backdrop-blur-xl border border-white/20 hover:bg-white/60 hover:border-blue-500/50 hover:shadow-2xl hover:shadow-blue-500/10 hover:-translate-y-0.5 transition-all duration-500 shadow-sm rounded-2xl h-14 px-6 text-slate-700 active:scale-[0.98] group";
 
     return (
         <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
@@ -77,11 +77,17 @@ const ConnectWithPatient = ({ patientName, isCollapsed, variant = 'sidebar' }: C
                     className={buttonClass}
                     title={isCollapsed ? "Connect with Patient" : ""}
                 >
-                    <div className={variant === 'sidebar' ? `p-2 bg-white/10 rounded-xl group-hover:bg-white/20 transition-colors shrink-0 ${isCollapsed ? 'p-1.5' : ''}` : ""}>
-                        <Video className={variant === 'sidebar' ? (isCollapsed ? 'w-4 h-4' : 'w-4 h-4') : "w-4 h-4 text-blue-500"} />
+                    <div className={variant === 'sidebar'
+                        ? `p-2 bg-white/10 rounded-xl group-hover:bg-white/20 transition-colors shrink-0 ${isCollapsed ? 'p-1.5' : ''}`
+                        : "p-2.5 bg-blue-500/10 rounded-xl group-hover:bg-blue-500/20 transition-all duration-500"
+                    }>
+                        <Video className={variant === 'sidebar' ? (isCollapsed ? 'w-4 h-4' : 'w-4 h-4') : "w-4 h-4 text-blue-600"} />
                     </div>
                     {(!isCollapsed || variant === 'grid') && (
-                        <span className={variant === 'sidebar' ? "text-sm tracking-tight text-white/90 whitespace-nowrap" : "text-sm tracking-tight text-slate-700 whitespace-nowrap"}>
+                        <span className={variant === 'sidebar'
+                            ? "text-sm tracking-tight text-white/90 whitespace-nowrap"
+                            : "text-[11px] font-black uppercase tracking-[0.2em] text-slate-600 group-hover:text-slate-900 transition-colors whitespace-nowrap"
+                        }>
                             Connect with Patient
                         </span>
                     )}

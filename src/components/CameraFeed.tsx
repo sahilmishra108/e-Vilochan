@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
+import { Slider } from '@/components/ui/slider';
 import { Card } from '@/components/ui/card';
-import { Camera, Square, Loader2, AlertTriangle, Activity, RefreshCw } from 'lucide-react';
+import { Camera, Square, Loader2, AlertTriangle, Activity, RefreshCw, Clock } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -12,11 +13,12 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { io } from 'socket.io-client';
 import { extractVitalsWithOCR, OCRProgress } from '@/lib/ocr';
-import { monitorROIs, VitalsData } from '@/types/vitals';
+import { monitorROIs, VitalsData, ROI } from '@/types/vitals';
 import { useAuth } from '@/contexts/AuthContext';
 import { API_BASE_URL } from '@/config';
 import VitalCard from './VitalCard';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { Settings2, Save, X, MousePointer2 } from 'lucide-react';
 
 interface CameraFeedProps {
   patientId?: string | null;
@@ -28,6 +30,7 @@ const CameraFeed = ({ patientId }: CameraFeedProps) => {
   const [selectedDeviceId, setSelectedDeviceId] = useState<string>('');
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [extractionInterval, setExtractionInterval] = useState(3000); // Default 3s
   const [ocrProgress, setOcrProgress] = useState<OCRProgress | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [latestVitals, setLatestVitals] = useState<VitalsData | null>(null);
@@ -38,6 +41,13 @@ const CameraFeed = ({ patientId }: CameraFeedProps) => {
   const { toast } = useToast();
   const { authFetch, token, user } = useAuth();
   const socketRef = useRef<any>(null);
+
+  // ROI Selection States
+  const [isROIMode, setIsROIMode] = useState(false);
+  const [customROIs, setCustomROIs] = useState<ROI[]>(monitorROIs);
+  const [drawingROI, setDrawingROI] = useState<Partial<ROI> | null>(null);
+  const [selectedROILabel, setSelectedROILabel] = useState<string>('HR');
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // Initialize global socket
@@ -78,6 +88,18 @@ const CameraFeed = ({ patientId }: CameraFeedProps) => {
       stopCapture();
     };
   }, [patientId]);
+
+  useEffect(() => {
+    if (isCapturing) {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      intervalRef.current = setInterval(() => {
+        captureAndProcess();
+      }, extractionInterval);
+    }
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, [extractionInterval, isCapturing]);
 
   const startCapture = async () => {
     // Clear previous errors
@@ -131,10 +153,7 @@ const CameraFeed = ({ patientId }: CameraFeedProps) => {
         try { await videoRef.current.play(); } catch (e) { /* ignore */ }
         setIsCapturing(true);
 
-        // Capture frame every 3 seconds
-        intervalRef.current = setInterval(() => {
-          captureAndProcess();
-        }, 3000);
+        // Initial capture and process will start via the useEffect above
 
         // Notify doctors that monitoring has started
         socketRef.current?.emit('monitoring-started', {
@@ -146,7 +165,7 @@ const CameraFeed = ({ patientId }: CameraFeedProps) => {
 
         toast({
           title: "Camera started",
-          description: "Capturing frames every 3 seconds",
+          description: `Capturing frames every ${extractionInterval / 1000} seconds`,
         });
       }
     } catch (error) {
@@ -191,6 +210,11 @@ const CameraFeed = ({ patientId }: CameraFeedProps) => {
       tracks.forEach(track => track.stop());
       videoRef.current.srcObject = null;
     }
+
+    // Notify doctors that monitoring has stopped
+    socketRef.current?.emit('monitoring-stopped', {
+      patient_id: patientId
+    });
 
     setIsCapturing(false);
   };
@@ -267,6 +291,75 @@ const CameraFeed = ({ patientId }: CameraFeedProps) => {
     });
   };
 
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (!isROIMode || !containerRef.current) return;
+
+    const rect = containerRef.current.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / rect.width;
+    const y = (e.clientY - rect.top) / rect.height;
+
+    setDrawingROI({
+      label: selectedROILabel,
+      x,
+      y,
+      width: 0,
+      height: 0
+    });
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isROIMode || !drawingROI || !containerRef.current) return;
+
+    const rect = containerRef.current.getBoundingClientRect();
+    const currentX = (e.clientX - rect.left) / rect.width;
+    const currentY = (e.clientY - rect.top) / rect.height;
+
+    setDrawingROI(prev => ({
+      ...prev,
+      width: currentX - (prev?.x || 0),
+      height: currentY - (prev?.y || 0)
+    }));
+  };
+
+  const handleMouseUp = () => {
+    if (!isROIMode || !drawingROI) return;
+
+    // Normalize if drawn backwards
+    const finalROI: ROI = {
+      label: drawingROI.label || selectedROILabel,
+      x: drawingROI.width! < 0 ? drawingROI.x! + drawingROI.width! : drawingROI.x!,
+      y: drawingROI.height! < 0 ? drawingROI.y! + drawingROI.height! : drawingROI.y!,
+      width: Math.abs(drawingROI.width!),
+      height: Math.abs(drawingROI.height!),
+    };
+
+    // Update customROIs
+    setCustomROIs(prev => {
+      const filtered = prev.filter(r => r.label !== finalROI.label);
+      return [...filtered, finalROI];
+    });
+
+    setDrawingROI(null);
+    toast({
+      title: `${finalROI.label} Zone Set`,
+      description: "Remember to save your layout after finishing.",
+    });
+  };
+
+  const saveROIs = async () => {
+    try {
+      // For now, we'll store in local storage or could add a backend endpoint
+      localStorage.setItem(`rois_${patientId}`, JSON.stringify(customROIs));
+      setIsROIMode(false);
+      toast({
+        title: "Layout Saved",
+        description: "Custom analysis zones updated successfully.",
+      });
+    } catch (err) {
+      console.error("Failed to save ROIs", err);
+    }
+  };
+
   const captureAndProcess = () => {
     if (!videoRef.current || !canvasRef.current || !workerRef.current) return;
 
@@ -298,7 +391,7 @@ const CameraFeed = ({ patientId }: CameraFeedProps) => {
     // Offload to Worker
     workerRef.current.postMessage({
       imageBase64,
-      rois: monitorROIs,
+      rois: customROIs, // Use customROIs instead of monitorROIs
       token: token // Pass token to worker
     });
   };
@@ -353,6 +446,42 @@ const CameraFeed = ({ patientId }: CameraFeedProps) => {
                   ))}
                 </SelectContent>
               </Select>
+            )}
+
+            <div className="flex flex-col gap-1.5 min-w-[120px] px-2">
+              <div className="flex justify-between items-center text-[9px] font-black uppercase text-slate-500 tracking-[0.1em]">
+                <div className="flex items-center gap-1">
+                  <Clock className="w-3 h-3 text-primary" />
+                  <span>Interval</span>
+                </div>
+                <span className="text-primary font-mono">{extractionInterval / 1000}s</span>
+              </div>
+              <Slider
+                value={[extractionInterval / 1000]}
+                onValueChange={(vals) => setExtractionInterval(vals[0] * 1000)}
+                min={3}
+                max={30}
+                step={1}
+                className="w-full"
+              />
+            </div>
+
+            {isCapturing && (
+              <Button
+                variant={isROIMode ? "secondary" : "ghost"}
+                onClick={() => setIsROIMode(!isROIMode)}
+                className="rounded-xl border border-white/10"
+              >
+                {isROIMode ? <X className="w-4 h-4 mr-2" /> : <Settings2 className="w-4 h-4 mr-2" />}
+                {isROIMode ? "Cancel ROI Edit" : "Adjust Zones"}
+              </Button>
+            )}
+
+            {isROIMode && (
+              <Button onClick={saveROIs} className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl">
+                <Save className="w-4 h-4 mr-2" />
+                Save Layout
+              </Button>
             )}
 
             {!isCapturing ? (
@@ -413,14 +542,74 @@ const CameraFeed = ({ patientId }: CameraFeedProps) => {
               <div className="absolute inset-x-0 h-1 bg-gradient-to-r from-transparent via-primary to-transparent blur-sm z-30 animate-[scan_2s_ease-in-out_infinite]"></div>
             )}
 
-            <video
-              ref={videoRef}
-              autoPlay
-              playsInline
-              muted
-              className="w-full h-auto aspect-video object-cover"
-            />
-            <canvas ref={canvasRef} className="hidden" />
+            {/* ROI Editing Overlay */}
+            {isROIMode && (
+              <div
+                className="absolute inset-0 z-50 cursor-crosshair"
+                onMouseDown={handleMouseDown}
+                onMouseMove={handleMouseMove}
+                onMouseUp={handleMouseUp}
+              >
+                {/* Existing ROIs */}
+                {customROIs.map((roi) => (
+                  <div
+                    key={roi.label}
+                    className="absolute border-2 border-primary/50 bg-primary/10 flex items-center justify-center"
+                    style={{
+                      left: `${roi.x * 100}%`,
+                      top: `${roi.y * 100}%`,
+                      width: `${roi.width * 100}%`,
+                      height: `${roi.height * 100}%`,
+                    }}
+                  >
+                    <span className="text-[10px] font-black text-white bg-primary px-1 rounded">{roi.label}</span>
+                  </div>
+                ))}
+
+                {/* Currently Drawing ROI */}
+                {drawingROI && (
+                  <div
+                    className="absolute border-2 border-white bg-white/20"
+                    style={{
+                      left: `${Math.min(drawingROI.x!, drawingROI.x! + drawingROI.width!) * 100}%`,
+                      top: `${Math.min(drawingROI.y!, drawingROI.y! + drawingROI.height!) * 100}%`,
+                      width: `${Math.abs(drawingROI.width!) * 100}%`,
+                      height: `${Math.abs(drawingROI.height!) * 100}%`,
+                    }}
+                  />
+                )}
+
+                {/* ROI Tool Selection */}
+                <div className="absolute top-4 right-4 bg-black/80 backdrop-blur-md p-4 rounded-3xl border border-white/20 flex flex-col gap-3">
+                  <p className="text-[10px] font-black text-white/60 tracking-widest uppercase mb-1">Select Vital to Define</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {['HR', 'Pulse', 'SpO2', 'ABP', 'PAP', 'EtCO2', 'awRR'].map((label) => (
+                      <Button
+                        key={label}
+                        variant={selectedROILabel === label ? "default" : "outline"}
+                        size="sm"
+                        onClick={(e) => { e.stopPropagation(); setSelectedROILabel(label); }}
+                        className="rounded-xl text-[10px] font-bold h-8"
+                      >
+                        {label}
+                      </Button>
+                    ))}
+                  </div>
+                  <p className="text-[9px] text-white/40 mt-2 italic">Click and drag on screen to draw box</p>
+                </div>
+              </div>
+            )}
+
+            <div ref={containerRef} className="relative">
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                muted
+                className="w-full h-auto aspect-video object-cover"
+              />
+              <canvas ref={canvasRef} className="hidden" />
+            </div>
 
             {ocrProgress && isProcessing && (
               <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] flex flex-col items-center justify-center z-40 transition-all">
@@ -448,7 +637,7 @@ const CameraFeed = ({ patientId }: CameraFeedProps) => {
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
               </span>
-              Capturing every 3 seconds
+              Capturing every {extractionInterval / 1000} seconds
             </p>
           )}
 
@@ -576,8 +765,8 @@ const CameraFeed = ({ patientId }: CameraFeedProps) => {
             </ResponsiveContainer>
           </div>
         </div>
-      </Card>
-    </div>
+      </Card >
+    </div >
   );
 };
 

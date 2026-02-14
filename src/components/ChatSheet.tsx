@@ -651,15 +651,135 @@ export const ChatView = ({ patientContext }: { patientContext?: ChatSheetProps['
 };
 
 const ChatSheet = ({ patientContext, customButton }: ChatSheetProps) => {
+    const { user, token } = useAuth();
+    const [unreadCount, setUnreadCount] = useState(0);
+    const [isOpen, setIsOpen] = useState(false);
+    const isOpenRef = useRef(false);
+    const socketRef = useRef<any>(null);
+
+    useEffect(() => {
+        isOpenRef.current = isOpen;
+    }, [isOpen]);
+
+    useEffect(() => {
+        if (!user) return;
+
+        // Initial fetch
+        fetchUnreadCount();
+
+        // Socket for live updates
+        const socket = io(API_BASE_URL);
+        socketRef.current = socket;
+
+        const roomId = patientContext?.id
+            ? `patient-chat-${patientContext.id}`
+            : user.icu_id
+                ? `icu-chat-${user.icu_id}`
+                : `hospital-${user.hospital_id}`;
+
+        if (patientContext?.id) {
+            socket.emit('join-patient', patientContext.id);
+        } else if (user.icu_id) {
+            socket.emit('join-icu', user.icu_id);
+        } else {
+            socket.emit('join-hospital', user.hospital_id);
+        }
+
+        socket.on('receive-message', (message: Message) => {
+            if (isOpenRef.current) {
+                markAsRead();
+            } else if (message.sender_id !== user?.doctor_id) {
+                setUnreadCount(prev => prev + 1);
+            }
+        });
+
+        socket.on('messages-read', (data: any) => {
+            // Reset count if anyone marks messages as read in this context
+            const isMatch = data.patientId
+                ? data.patientId == patientContext?.id
+                : data.icuId
+                    ? (data.icuId == (patientContext?.icuId || user.icu_id) && !patientContext?.id)
+                    : (!patientContext?.id && !user.icu_id);
+
+            if (isMatch) {
+                setUnreadCount(0);
+            }
+        });
+
+        return () => {
+            socket.disconnect();
+        };
+    }, [user, patientContext?.id]);
+
+    const fetchUnreadCount = async () => {
+        try {
+            let url = `${API_BASE_URL}/api/messages/unread-count/${user?.hospital_id}`;
+            const params = new URLSearchParams();
+            if (patientContext?.id) params.append('patientId', patientContext.id.toString());
+            else if (user?.icu_id) params.append('icuId', user.icu_id.toString());
+
+            const queryString = params.toString();
+            if (queryString) url += `?${queryString}`;
+
+            const response = await fetch(url, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (response.ok) {
+                const data = await response.json();
+                setUnreadCount(data.count);
+            }
+        } catch (error) {
+            console.error("Failed to fetch unread count", error);
+        }
+    };
+
+    const markAsRead = async () => {
+        try {
+            await fetch(`${API_BASE_URL}/api/messages/mark-read`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    hospitalId: user?.hospital_id,
+                    icuId: patientContext?.icuId || user?.icu_id,
+                    patientId: patientContext?.id
+                })
+            });
+            setUnreadCount(0);
+        } catch (error) {
+            console.error("Failed to mark messages as read", error);
+        }
+    };
+
+    const handleOpenChange = (open: boolean) => {
+        setIsOpen(open);
+        if (open) {
+            markAsRead();
+        }
+    };
+
     return (
-        <Sheet>
+        <Sheet open={isOpen} onOpenChange={handleOpenChange}>
             <SheetTrigger asChild>
-                {customButton ? customButton : (
-                    <Button variant="outline" className="flex items-center gap-2 bg-white/50 backdrop-blur-sm border-slate-200 hover:bg-white hover:border-primary/50 transition-all hover:scale-105 shadow-sm rounded-full px-4">
-                        <MessageSquare className="w-4 h-4 text-primary" />
-                        Chat
-                    </Button>
-                )}
+                <div className="relative">
+                    {customButton ? customButton : (
+                        <Button variant="outline" className="w-full flex items-center justify-center gap-4 bg-white/40 backdrop-blur-xl border border-white/20 hover:bg-white/60 hover:border-primary/50 hover:shadow-2xl hover:shadow-primary/10 hover:-translate-y-0.5 transition-all duration-500 shadow-sm rounded-2xl h-14 px-6 text-slate-700 active:scale-[0.98] group">
+                            <div className="p-2.5 bg-primary/10 rounded-xl group-hover:bg-primary/20 transition-all duration-500">
+                                <MessageSquare className="w-4 h-4 text-primary" />
+                            </div>
+                            <span className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-600 group-hover:text-slate-900 transition-colors whitespace-nowrap">
+                                Clinical Chat
+                            </span>
+                        </Button>
+                    )}
+                    {unreadCount > 0 && (
+                        <span className="absolute -top-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full bg-rose-500 text-[11px] font-black text-white shadow-[0_0_15px_rgba(244,63,94,0.4)] ring-4 ring-white animate-in zoom-in duration-500">
+                            {unreadCount > 9 ? '9+' : unreadCount}
+                        </span>
+                    )}
+                </div>
             </SheetTrigger>
             <SheetContent className="w-[400px] sm:w-[540px] p-0 bg-transparent border-none">
                 <ChatView patientContext={patientContext} />
