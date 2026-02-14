@@ -5,7 +5,7 @@ import { ROI } from "../types/vitals";
 const API_BASE_URL = typeof process !== 'undefined' && process.env.VITE_API_BASE_URL
     ? process.env.VITE_API_BASE_URL
     : (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_BASE_URL)
-    || 'http://localhost:3000';
+    || 'https://e-vilochan-2.onrender.com';
 
 interface OCRMessage {
     imageBase64: string;
