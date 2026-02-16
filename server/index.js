@@ -484,17 +484,33 @@ io.on('connection', (socket) => {
   });
 
   socket.on('monitoring-stopped', (data) => {
-    const { patient_id } = data;
+    const { patient_id, hospital_id, icu_id } = data;
     console.log(`Monitoring stopped for Patient ${patient_id}`);
 
     // Relay to the patient's room so doctors can clear their UI
     io.to(`patient-${patient_id}`).emit('monitoring-stopped', data);
+
+    // Also relay to Hospital/ICU rooms for MultiPatientMonitor
+    if (icu_id) {
+      io.to(`icu-${icu_id}`).emit('monitoring-stopped', data);
+    }
+    if (hospital_id) {
+      io.to(`hospital-${hospital_id}`).emit('monitoring-stopped', data);
+    }
   });
 
   socket.on('vital-update', (data) => {
-    const { patient_id } = data;
+    const { patient_id, hospital_id, icu_id } = data;
     // Relay vitals to the patient's room for real-time doctor view
     io.to(`patient-${patient_id}`).emit('vital-update', data);
+
+    // Also relay to Hospital/ICU rooms for MultiPatientMonitor
+    if (icu_id) {
+      io.to(`icu-${icu_id}`).emit('vital-update', data);
+    }
+    if (hospital_id) {
+      io.to(`hospital-${hospital_id}`).emit('vital-update', data);
+    }
   });
 
   socket.on('send-message', async (messageData) => {

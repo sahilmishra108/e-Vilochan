@@ -213,9 +213,13 @@ const CameraFeed = ({ patientId }: CameraFeedProps) => {
 
     // Notify doctors that monitoring has stopped
     socketRef.current?.emit('monitoring-stopped', {
-      patient_id: patientId
+      patient_id: patientId,
+      hospital_id: user?.hospital_id,
+      icu_id: user?.icu_id
     });
 
+    setLatestVitals(null);
+    setVitalsHistory([]);
     setIsCapturing(false);
   };
 
@@ -287,6 +291,8 @@ const CameraFeed = ({ patientId }: CameraFeedProps) => {
     socketRef.current?.emit('vital-update', {
       ...vitals,
       patient_id: patientId,
+      hospital_id: user?.hospital_id,
+      icu_id: user?.icu_id,
       timestamp: new Date().toISOString()
     });
   };

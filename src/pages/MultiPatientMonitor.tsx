@@ -34,7 +34,7 @@ const socket = io(API_BASE_URL);
 const MultiPatientMonitor = () => {
     const [patients, setPatients] = useState<Patient[]>([]);
     const [patientVitals, setPatientVitals] = useState<Record<number, Vitals>>({});
-    const { authFetch } = useAuth();
+    const { authFetch, user } = useAuth();
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -53,6 +53,10 @@ const MultiPatientMonitor = () => {
 
         fetchPatients();
 
+        if (user?.hospital_id) {
+            socket.emit('join-hospital', user.hospital_id);
+        }
+
         // Socket.IO listeners
         socket.on("vital-update", (data: any) => {
             setPatientVitals((prev) => ({
@@ -70,10 +74,19 @@ const MultiPatientMonitor = () => {
             }));
         });
 
+        socket.on("monitoring-stopped", (data: any) => {
+            setPatientVitals((prev) => {
+                const newState = { ...prev };
+                delete newState[data.patient_id];
+                return newState;
+            });
+        });
+
         return () => {
             socket.off("vital-update");
+            socket.off("monitoring-stopped");
         };
-    }, []);
+    }, [user]);
 
     const getUrgencyColor = (val: number | null, Type: 'HR' | 'SpO2') => {
         if (val === null) return "text-muted-foreground";
