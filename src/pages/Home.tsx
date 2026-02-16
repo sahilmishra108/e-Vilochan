@@ -83,7 +83,7 @@ const Home = () => {
             )}
             {!isAuthenticated && (
               <Button
-                onClick={() => navigate('/login')}
+                onClick={() => navigate('/register')}
                 className="bg-slate-900 hover:bg-slate-800 text-white rounded-full px-6 h-10 text-sm font-medium shadow-none transition-all hover:bg-slate-700"
               >
                 Get Started
