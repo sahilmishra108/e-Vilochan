@@ -4,6 +4,7 @@ import { Activity, ArrowRight, ShieldCheck, Zap, LogIn, LogOut, LayoutDashboard,
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { BackgroundGrid } from "@/components/BackgroundGrid";
+import { AnimatedECGBackground } from "@/components/AnimatedECGBackground";
 import QuickAdmitDialog from "@/components/QuickAdmitDialog";
 import {
   DropdownMenu,
@@ -22,6 +23,7 @@ const Home = () => {
     <div className="min-h-screen bg-slate-50 font-sans selection:bg-slate-900 selection:text-white pb-0 relative overflow-hidden">
       {/* Subtle Medical Background Pattern */}
       <BackgroundGrid />
+      <AnimatedECGBackground />
 
       {/* Refined Navigation */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-200/80 supports-[backdrop-filter]:bg-white/60">
